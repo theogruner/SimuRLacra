@@ -1,0 +1,20 @@
+env:
+  dt: 0.01
+  max_steps: 500
+seed: None
+policy:
+  feats: FeatureStack [<function identity_feat at 0x7fbc423e4b90>, <function sin_feat
+    at 0x7fbc423e4f80>]
+algo:
+  expl_std_init: 0.5
+  expl_std_min: 0.02
+  extra_expl_decay_iter: 5
+  extra_expl_std_init: 1.0
+  full_cov: true
+  max_iter: 20
+  num_init_states_per_domain: 12
+  num_is_samples: 20
+  num_workers: 20
+  pop_size: 100
+  symm_sampling: false
+algo_name: cem
