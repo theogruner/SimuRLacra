@@ -85,4 +85,4 @@ def test_insert_tensor_col(orig, col):
         assert orig.shape[0] == result.shape[0]
         assert orig.shape[1] == result.shape[1] - 1
         # Check the values
-        to.testing.assert_allclose(result[:, col_idx], col.squeeze())
+        to.testing.assert_allclose(result[:, col_idx].squeeze(), col.squeeze())
