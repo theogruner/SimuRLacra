@@ -644,7 +644,9 @@ class StepSequence(Sequence[Step]):
         .. note::
             Left out the option to return complete rollouts like for `split_shuffled_batches`.
         """
-        if batch_size is None and num_batches is None or batch_size is not None and num_batches is not None:
+
+        # The number of not None elements in (batch_size, num_batches) must be 1
+        if (batch_size, num_batches).count(None) != 1:
             raise pyrado.ValueErr(msg="Either batch_size or num_batches must not be None, but not both or none!")
         elif batch_size is not None and batch_size < 1:
             raise pyrado.ValueErr(given=batch_size, ge_constraint="1 (int)")

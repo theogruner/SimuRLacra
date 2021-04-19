@@ -33,7 +33,7 @@ from torch.distributions.uniform import Uniform
 from torch.distributions.normal import Normal
 from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.bernoulli import Bernoulli
-from typing import Callable, Optional, Mapping, Union
+from typing import Callable, Dict, List, Optional, Mapping, Union
 
 import pyrado
 from pyrado.domain_randomization.domain_parameter import (
@@ -171,9 +171,7 @@ class DomainRandomizer:
                 # Return a list with all domain parameter sets
                 copy = deepcopy_or_clone(self._params_pert_list)
                 if dtype == "numpy":  # nothing to be done for torch
-                    for i in range(len(copy)):
-                        for k in copy[i].keys():
-                            copy[i][k] = copy[i][k].detach().numpy()
+                    self._convert_params_to_numpy(copy)
 
             elif fmt == "dict":
                 # Returns a dict (as many entries as parameters) with lists as values (as many entries as samples)
@@ -186,8 +184,7 @@ class DomainRandomizer:
             # If only one sample is wanted or the internal list just contains 1 element
             copy = deepcopy_or_clone(self._params_pert_list[0])
             if dtype == "numpy":  # nothing to be done for torch
-                for k in copy.keys():
-                    copy[k] = copy[k].detach().numpy()
+                self._convert_params_to_numpy(copy)
             if fmt == "list":  # nothing to be done for dict
                 copy = [copy]
 
@@ -197,9 +194,7 @@ class DomainRandomizer:
                 copy = deepcopy_or_clone(self._params_pert_list[:num_samples])
                 # Return a list with the fist num_samples domain parameter sets
                 if dtype == "numpy":  # nothing to be done for torch
-                    for i in range(num_samples):
-                        for k in copy[i].keys():
-                            copy[i][k] = copy[i][k].detach().numpy()
+                    self._convert_params_to_numpy(copy)
 
             elif fmt == "dict":
                 # Return a dict with as many keys as perturbed params and num_samples values for each of them
@@ -262,3 +257,17 @@ class DomainRandomizer:
                 dp.distr = MultivariateNormal(dp.mean, dp.cov)
             if isinstance(dp, BernoulliDomainParam):
                 dp.distr = Bernoulli(dp.prob_1)
+
+    def _convert_params_to_numpy(self, params: Union[Dict, List]):
+        """
+        Helper function to convert torch structures to numpy in place.
+
+        :param params: The strcture to convert
+        """
+        if isinstance(params, list):
+            for i in range(len(params)):
+                for k in params[i].keys():
+                    params[i][k] = params[i][k].detach().numpy()
+        else:
+            for k in params.keys():
+                params[k] = params[k].detach().numpy()

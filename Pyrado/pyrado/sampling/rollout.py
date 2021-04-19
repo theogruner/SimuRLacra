@@ -196,16 +196,24 @@ def rollout(
         obs_to = to.from_numpy(obs).type(to.get_default_dtype())  # policy operates on PyTorch tensors
         with to.no_grad():
             if isinstance(policy, Policy):
-                if policy.is_recurrent:
-                    if isinstance(getattr(policy, "policy", policy), TwoHeadedPolicy):
-                        act_to, head_2_to, hidden_next = policy(obs_to, hidden)
-                    else:
-                        act_to, hidden_next = policy(obs_to, hidden)
-                else:
-                    if isinstance(getattr(policy, "policy", policy), TwoHeadedPolicy):
-                        act_to, head_2_to = policy(obs_to)
-                    else:
-                        act_to = policy(obs_to)
+                # Policy consumes hidden parameter if it is recurrent
+                _hidden = [hidden] if policy.is_recurrent else []
+
+                # Determine if the policy is two headed
+                two_headed = isinstance(getattr(policy, "policy", policy), TwoHeadedPolicy)
+
+                act_to = policy(obs_to, *_hidden)
+
+                if policy.is_recurrent and two_headed:
+                    # Policy is recurent and two headed
+                    act_to, head_2_to, hidden_next = act_to
+                elif two_headed:
+                    # Policy is two headed
+                    act_to, head_2_to = act_to
+                elif policy.is_recurrent:
+                    # Policy is recurrent
+                    act_to, hidden_next = act_to
+
             else:
                 # If the policy ist not of type Policy, it should still operate on PyTorch tensors
                 act_to = policy(obs_to)
