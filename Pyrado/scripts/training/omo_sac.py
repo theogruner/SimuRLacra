@@ -58,7 +58,7 @@ if __name__ == "__main__":
     pyrado.set_seed(args.seed, verbose=True)
 
     # Environment
-    env_hparams = dict(dt=1 / 50.0, max_steps=200)
+    env_hparams = dict(dt=1 / 100.0, max_steps=400)
     env = OneMassOscillatorSim(**env_hparams, task_args=dict(state_des=np.array([0.5, 0])))
     env = ActNormWrapper(env)
 
@@ -78,20 +78,20 @@ if __name__ == "__main__":
     # Algorithm
     algo_hparam = dict(
         max_iter=1000 * env.max_steps,
-        memory_size=100 * env.max_steps,
-        num_init_memory_steps=10 * env.max_steps,
+        memory_size=10 * env.max_steps,
+        num_init_memory_steps=1 * env.max_steps,
         gamma=0.995,
-        num_updates_per_step=1,
+        num_updates_per_step=10,
         tau=0.995,
         ent_coeff_init=0.2,
         learn_ent_coeff=True,
         target_update_intvl=1,
         standardize_rew=True,
-        rew_scale=1.0,
+        rew_scale=5.0,
         min_steps=1,
-        batch_size=512,
+        batch_size=256,
         num_workers=1,
-        lr=1e-3,
+        lr=5e-4,
     )
     algo = SAC(ex_dir, env, policy, qfcn_1, qfcn_2, **algo_hparam)
 

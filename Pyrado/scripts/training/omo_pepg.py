@@ -52,7 +52,7 @@ if __name__ == "__main__":
     pyrado.set_seed(args.seed, verbose=True)
 
     # Environment
-    env_hparams = dict(dt=1 / 50.0, max_steps=200)
+    env_hparams = dict(dt=1 / 100.0, max_steps=400)
     env = OneMassOscillatorSim(**env_hparams, task_args=dict(state_des=np.array([0.5, 0])))
     env = ActNormWrapper(env)
 
@@ -64,13 +64,13 @@ if __name__ == "__main__":
     algo_hparam = dict(
         max_iter=100,
         num_init_states_per_domain=8,
-        pop_size=60,
-        expl_std_init=1.0,
-        clip_ratio_std=0.05,
-        normalize_update=False,
+        pop_size=200,
+        expl_std_init=0.3,
+        clip_ratio_std=0.1,
+        normalize_update=True,
         transform_returns=True,
-        lr=1e-2,
-        num_workers=8,
+        lr=1e-3,
+        num_workers=20,
     )
     algo = PEPG(ex_dir, env, policy, **algo_hparam)
 

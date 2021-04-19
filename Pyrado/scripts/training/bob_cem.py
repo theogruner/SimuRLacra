@@ -50,7 +50,7 @@ if __name__ == "__main__":
     pyrado.set_seed(args.seed, verbose=True)
 
     # Environment
-    env_hparams = dict(dt=1 / 50.0, max_steps=300)
+    env_hparams = dict(dt=1 / 100.0, max_steps=500)
     env = BallOnBeamSim(**env_hparams)
     env = ActNormWrapper(env)
 
@@ -63,17 +63,16 @@ if __name__ == "__main__":
 
     # Algorithm
     algo_hparam = dict(
-        max_iter=100,
+        max_iter=20,
         pop_size=100,
         num_init_states_per_domain=12,
         num_is_samples=20,
-        expl_std_init=0.5,
-        expl_std_min=0.02,
+        expl_std_init=0.7,
         extra_expl_std_init=1.0,
         extra_expl_decay_iter=5,
         full_cov=True,
         symm_sampling=False,
-        num_workers=8,
+        num_workers=20,
     )
     algo = CEM(ex_dir, env, policy, **algo_hparam)
 

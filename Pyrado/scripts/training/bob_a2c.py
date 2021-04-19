@@ -41,7 +41,7 @@ from pyrado.algorithms.step_based.gae import GAE
 from pyrado.spaces import ValueFunctionSpace
 from pyrado.environments.pysim.ball_on_beam import BallOnBeamSim
 from pyrado.logger.experiment import setup_experiment, save_dicts_to_yaml
-from pyrado.policies.features import FeatureStack, identity_feat, sin_feat, RFFeat, RBFFeat
+from pyrado.policies.features import FeatureStack, identity_feat, sin_feat
 from pyrado.policies.feed_forward.fnn import FNNPolicy
 from pyrado.policies.feed_forward.linear import LinearPolicy
 
@@ -63,14 +63,6 @@ if __name__ == "__main__":
 
     # Policy
     policy_hparam = dict(
-        # feats=FeatureStack(
-        #     [
-        #         RFFeat(
-        #             env.obs_space.flat_dim, num_feat_per_dim=500, bandwidth=1/env.obs_space.bound_up, use_cuda=True
-        #         )
-        #     ]
-        # )
-        # feats=FeatureStack([RBFFeat(num_feat_per_dim=20, bounds=env.obs_space.bounds, scale=None, use_cuda=True)])
         feats=FeatureStack([identity_feat, sin_feat])
     )
     policy = LinearPolicy(spec=env.spec, **policy_hparam, use_cuda=True)
@@ -92,7 +84,6 @@ if __name__ == "__main__":
     algo_hparam = dict(
         max_iter=500,
         min_steps=env.max_steps * 10,
-        num_workers=4,
         vfcn_coeff=0.7,
         entropy_coeff=4e-5,
         batch_size=256,
@@ -100,6 +91,7 @@ if __name__ == "__main__":
         lr=2e-3,
         lr_scheduler=lr_scheduler.ExponentialLR,
         lr_scheduler_hparam=dict(gamma=0.99),
+        num_workers=8,
     )
     algo = A2C(ex_dir, env, policy, critic, **algo_hparam)
 
