@@ -1,0 +1,17 @@
+env:
+  dt: 0.01
+  max_steps: 800
+seed: None
+policy:
+  feats: FeatureStack [<function const_feat at 0x7f8b9ae1fe60>, <function identity_feat
+    at 0x7f8b9ab9c0e0>, <function sign_feat at 0x7f8b9ab9c170>, <function squared_feat
+    at 0x7f8b9ab9c290>, MultFeat (indices 0 2), MultFeat (indices 1 2)]
+algo:
+  expl_factor: 1.05
+  expl_std_init: 1.0
+  max_iter: 10
+  num_domains: 1
+  num_init_states_per_domain: 1
+  num_workers: 8
+  pop_size: 120
+algo_name: hc
