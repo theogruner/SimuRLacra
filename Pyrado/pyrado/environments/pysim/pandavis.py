@@ -30,8 +30,19 @@ import numpy as np
 import os.path as osp
 import sys
 from direct.showbase.ShowBase import ShowBase
+from direct.showbase.ShowBaseGlobal import aspect2d
 from direct.task import Task
-from panda3d.core import *
+from panda3d.core import (
+    DirectionalLight,
+    AntialiasAttrib,
+    WindowProperties,
+    AmbientLight,
+    TextNode,
+    LineSegs,
+    Filename,
+    loadPrcFileData,
+    NodePath,
+)
 
 import pyrado
 from pyrado.environments.sim_base import SimEnv
@@ -49,7 +60,7 @@ loadPrcFileData("", confVars)
 
 
 class PandaVis(ShowBase):
-    """ Base class for all visualizations with panda3d """
+    """Base class for all visualizations with panda3d"""
 
     def __init__(self, rendering: bool):
         """
@@ -155,7 +166,7 @@ class PandaVis(ShowBase):
 
 
 class BallOnBeamVis(PandaVis):
-    """ Visualisation for the BallOnBeamSim class using panda3d """
+    """Visualisation for the BallOnBeamSim class using panda3d"""
 
     def __init__(self, env: SimEnv, rendering: bool):
         """
@@ -182,7 +193,9 @@ class BallOnBeamVis(PandaVis):
         self.win.requestProperties(self.windowProperties)
 
         # Set pov
-        self.cam.setY(-3.0 * self._scale)
+        self.cam.setX(-0.2 * self._scale)
+        self.cam.setY(-4.0 * self._scale)
+        self.cam.setZ(0.1 * self._scale)
 
         # Ball
         self.ball = self.loader.loadModel(osp.join(self.dir, "ball_red.egg"))
@@ -242,7 +255,7 @@ class BallOnBeamVis(PandaVis):
 
 
 class OneMassOscillatorVis(PandaVis):
-    """ Visualisation for the OneMassOscillatorSim class using panda3d """
+    """Visualisation for the OneMassOscillatorSim class using panda3d"""
 
     def __init__(self, env: SimEnv, rendering: bool):
         """
@@ -264,7 +277,8 @@ class OneMassOscillatorVis(PandaVis):
         self.win.requestProperties(self.windowProperties)
 
         # Set pov
-        self.cam.setY(-5 * self._scale)
+        self.cam.setY(-4.0 * self._scale)
+        self.cam.setZ(0.2 * self._scale)
 
         # Ground
         self.ground = self.loader.loadModel(osp.join(self.dir, "cube_green.egg"))
@@ -341,7 +355,7 @@ class OneMassOscillatorVis(PandaVis):
 
 
 class PendulumVis(PandaVis):
-    """ Visualisation for the PendulumSim class using panda3d """
+    """Visualisation for the PendulumSim class using panda3d"""
 
     def __init__(self, env: SimEnv, rendering: bool):
         """
@@ -366,7 +380,7 @@ class PendulumVis(PandaVis):
         self.win.requestProperties(self.windowProperties)
 
         # Set pov
-        self.cam.setY(-20 * self._scale)
+        self.cam.setY(-18 * self._scale)
 
         # Joint
         self.joint = self.loader.loadModel(osp.join(self.dir, "ball_grey.egg"))
@@ -422,7 +436,7 @@ class PendulumVis(PandaVis):
 
 
 class QBallBalancerVis(PandaVis):
-    """ Visualisation for the QBallBalancerSim class using panda3d """
+    """Visualisation for the QBallBalancerSim class using panda3d"""
 
     def __init__(self, env: SimEnv, rendering: bool):
         """
@@ -443,14 +457,15 @@ class QBallBalancerVis(PandaVis):
         l_pole = 0.02
 
         # Scaling of the animation so the camera can move smoothly
-        self._scale = 1 / r_pole
+        self._scale = 2 / r_pole
 
         # Set window title
         self.windowProperties.setTitle("Quanser Ball Balancer")
         self.win.requestProperties(self.windowProperties)
 
         # Set pov
-        self.cam.setY(-1.3 * self._scale)
+        self.cam.setPos(-0.1 * self._scale, -1.3 * self._scale, 0.5 * self._scale)
+        self.cam.setHpr(0, -18, 0)  # roll, pitch, yaw [deg]
 
         # Ball
         self.ball = self.loader.loadModel(osp.join(self.dir, "ball_red.egg"))
@@ -568,7 +583,7 @@ class QBallBalancerVis(PandaVis):
 
 
 class QCartPoleVis(PandaVis):
-    """ Visualisation for the QCartPoleSim class using panda3d """
+    """Visualisation for the QCartPoleSim class using panda3d"""
 
     def __init__(self, env: SimEnv, rendering: bool):
         """
@@ -585,7 +600,7 @@ class QCartPoleVis(PandaVis):
         l_rail = float(self._env.domain_param["l_rail"])
 
         # Only for animation
-        l_cart, h_cart = 0.08, 0.08
+        l_cart, h_cart = 0.05, 0.045
         r_pole, r_rail = 0.01, 0.005
 
         # Scaling of the animation so the camera can move smoothly
@@ -596,14 +611,14 @@ class QCartPoleVis(PandaVis):
         self.win.requestProperties(self.windowProperties)
 
         # Set pov
-        self.cam.setY(-5 * self._scale)
+        self.cam.setX(-0.15 * self._scale)
+        self.cam.setY(-3.0 * self._scale)
 
         # Rail
         self.rail = self.loader.loadModel(osp.join(self.dir, "cylinder_middle_grey.egg"))
         self.rail.setPos(0, 0, (-h_cart - r_rail) * self._scale)
-        self.rail.setScale(r_rail * self._scale, r_rail * self._scale, l_rail * self._scale)
+        self.rail.setScale(l_rail / 2 * self._scale, r_rail * self._scale, r_rail * self._scale)
         self.rail.reparentTo(self.render)
-        self.rail.setR(90)
 
         # Cart
         self.cart = self.loader.loadModel(osp.join(self.dir, "cube_green.egg"))
@@ -665,7 +680,8 @@ class QCartPoleVis(PandaVis):
         # Update displayed text
         self.text.setText(
             f"""
-            theta: {self._env.state[1] * 180 / np.pi : 2.3f}
+            x: {x : 1.3f}
+            theta: {th * 180 / np.pi : 3.3f}
             dt: {self._env.dt :1.4f}
             g: {g : 1.3f}
             m_cart: {m_cart : 1.4f}
@@ -688,7 +704,7 @@ class QCartPoleVis(PandaVis):
 
 
 class QQubeVis(PandaVis):
-    """ Visualisation for the QQubeSim class using panda3d """
+    """Visualisation for the QQubeSim class using panda3d"""
 
     def __init__(self, env: SimEnv, rendering: bool):
         """
@@ -715,8 +731,8 @@ class QQubeVis(PandaVis):
         self.win.requestProperties(self.windowProperties)
 
         # Set pov
-        self.cam.setPos(-0.45 * self._scale, -1.4 * self._scale, 0.35 * self._scale)
-        self.cam.setHpr(-20, -10, 0)  # roll, pitch, yaw in
+        self.cam.setPos(-0.5 * self._scale, -1.5 * self._scale, 0.4 * self._scale)
+        self.cam.setHpr(-20, -10, 0)  # roll, pitch, yaw [deg]
 
         # Box
         self.box = self.loader.loadModel(osp.join(self.dir, "cube_green.egg"))
