@@ -1,0 +1,64 @@
+env:
+  dt: 0.004
+  max_steps: 2500
+seed: 101
+prior:
+  high:
+  - 0.003000000026077032
+  - 0.0010000000474974513
+  - 10.079999923706055
+  - 0.05040000006556511
+  - 0.10450000315904617
+  - 0.026399999856948853
+  - 0.09350000321865082
+  - 0.14190000295639038
+  - 10.30049991607666
+  low:
+  - 9.99999993922529e-09
+  - 9.99999993922529e-09
+  - 6.71999979019165
+  - 0.03359999880194664
+  - 0.08550000190734863
+  - 0.02160000056028366
+  - 0.07649999856948853
+  - 0.1160999983549118
+  - 9.319499969482422
+embedding:
+  downsampling_factor: 100
+  hidden_size: 20
+  num_recurrent_layers: 1
+  output_size: 1
+embedding_name: rnnemb
+posterior_nn:
+  hidden_features: 50
+  model: maf
+  num_transforms: 5
+algo:
+  len_segments: 25
+  max_iter: 1
+  normalize_posterior: false
+  num_eval_samples: 2
+  num_real_rollouts: 1
+  num_sbi_rounds: 3
+  num_segments: None
+  num_sim_per_round: 5000
+  num_workers: 10
+  posterior_hparam:
+    hidden_features: 50
+    model: maf
+    num_transforms: 5
+  simulation_batch_size: 10
+  subrtn_sbi_sampling_hparam:
+    sample_with_mcmc: true
+  subrtn_sbi_training_hparam:
+    discard_prior_samples: false
+    learning_rate: 0.0003
+    num_atoms: 10
+    retrain_from_scratch_each_round: false
+    show_train_summary: false
+    stop_after_epochs: 20
+    training_batch_size: 100
+    use_combined_loss: false
+    validation_fraction: 0.2
+  use_rec_act: true
+algo_name: npdr
