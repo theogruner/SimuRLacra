@@ -42,8 +42,9 @@ class GaussianObsNoiseWrapper(EnvWrapperObs, Serializable):
     def __init__(
         self,
         wrapped_env: Union[SimEnv, EnvWrapper],
-        noise_std: Union[list, np.ndarray],
+        noise_std: Optional[Union[list, np.ndarray]] = None,
         noise_mean: Optional[Union[list, np.ndarray]] = None,
+        domain_param: Optional[dict] = None,
     ):
         """
         :param wrapped_env: environment to wrap
@@ -53,17 +54,21 @@ class GaussianObsNoiseWrapper(EnvWrapperObs, Serializable):
         Serializable._init(self, locals())
 
         super().__init__(wrapped_env)
+        self._mean = np.zeros(self.obs_space.shape)
+        if domain_param is not None:
+            self._get_wrapper_domain_param(domain_param)
+        elif noise_std is not None:
+            self._std = np.array(noise_std)
+            if noise_mean is not None:
+                self._mean = np.array(noise_mean)
+        else:
+            raise pyrado.ValueErr(msg="Either 'noise_std' or 'domain_param' has to be given")
 
-        # Parse noise specification
-        self._std = np.array(noise_std)
+        # check the shapes
         if not self._std.shape == self.obs_space.shape:
             raise pyrado.ShapeErr(given=self._std, expected_match=self.obs_space)
-        if noise_mean is not None:
-            self._mean = np.array(noise_mean)
-            if not self._mean.shape == self.obs_space.shape:
-                raise pyrado.ShapeErr(given=self._mean, expected_match=self.obs_space)
-        else:
-            self._mean = np.zeros(self.obs_space.shape)
+        if not self._mean.shape == self.obs_space.shape:
+            raise pyrado.ShapeErr(given=self._mean, expected_match=self.obs_space)
 
     def _process_obs(self, obs: np.ndarray) -> np.ndarray:
         # Generate Gaussian noise sample
@@ -78,8 +83,13 @@ class GaussianObsNoiseWrapper(EnvWrapperObs, Serializable):
 
         :param domain_param: domain parameter dict
         """
-        domain_param["obs_noise_mean"] = self._mean
-        domain_param["obs_noise_std"] = self._std
+        idx = 0
+        domain_param[f"obs_noise_mean"] = self._mean[idx]
+
+        for obs in sorted(self.wrapped_env.obs_space.labels):
+            domain_param[f"obs_noise_mean_{obs}"] = self._mean[idx]
+            domain_param[f"obs_noise_std_{obs}"] = self._std[idx]
+            idx += 1
 
     def _get_wrapper_domain_param(self, domain_param: dict):
         """
@@ -87,9 +97,11 @@ class GaussianObsNoiseWrapper(EnvWrapperObs, Serializable):
 
         :param domain_param: domain parameter dict
         """
-        if "obs_noise_mean" in domain_param:
-            self._mean = np.array(domain_param["obs_noise_mean"])
+        obs_means = [domain_param[obs] for obs in sorted(domain_param.keys()) if obs.startswith("obs_noise_mean")]
+        if len(obs_means) > 0:
+            self._mean = np.array(obs_means)
             assert self._mean.shape == self.obs_space.shape
-        if "obs_noise_std" in domain_param:
-            self._std = np.array(domain_param["obs_noise_std"])
+        obs_stds = [domain_param[obs] for obs in sorted(domain_param.keys()) if obs.startswith("obs_noise_std")]
+        if len(obs_stds) > 0:
+            self._std = np.array(obs_stds)
             assert self._std.shape == self.obs_space.shape

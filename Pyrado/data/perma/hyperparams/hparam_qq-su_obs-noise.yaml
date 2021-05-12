@@ -1,0 +1,39 @@
+env_name: qq-su  # required to load the settings.yaml
+algo_name: npsi  # required to load the settings.yaml
+
+# comment out the dp_parameter which should not be learned by NPDR
+dp_selection:
+#  - Dr
+#  - Dp
+#  - Rm
+#  - km
+#  - Mr
+#  - Mp
+#  - Lr
+#  - Lp
+#  - g
+#  - V_thold_neg
+#  - V_thold_pos
+#  - act_delay
+  - obs_noise_std-sin_theta
+  - obs_noise_std-cos_theta
+  - obs_noise_std-sin_alpha
+  - obs_noise_std-cos_alpha
+  - obs_noise_std-theta_dot
+  - obs_noise_std-alpha_dot
+
+explicit_prior_range:
+  Dr:
+    - 0.
+    - 1.
+
+# Define a new nominal value if required. E.g., adapt g assumption if we are on Mars
+updated_nominals:
+
+# Update prior range for a dp
+prior_range:
+
+# update algo parameters
+algo_hparam:
+  num_sim_per_round: 10
+  num_sbi_rounds: 1

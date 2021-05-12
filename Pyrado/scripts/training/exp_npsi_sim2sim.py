@@ -128,7 +128,9 @@ if __name__ == "__main__":
     # create simulated environment
     env_sim = base_env(setting_args["env_hparam"]["dt"], setting_args["env_hparam"]["max_steps"])
     # TODO: Applying Wrappers by keywords from hparam_args
-    env_sim = ActDelayWrapper(env_sim, setting_args["env_hparam"]["act_delay"])
+    # env_sim = ActDelayWrapper(env_sim, setting_args["env_hparam"]["act_delay"])
+    env_sim = GaussianObsNoiseWrapper(env_sim, domain_param=setting_args["dp_real"])
+
     # create real environment
     env_real = deepcopy(env_sim)
     env_real.domain_param = setting_args["dp_real"]
