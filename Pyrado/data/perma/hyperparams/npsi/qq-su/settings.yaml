@@ -36,11 +36,11 @@ dp_real:
   V_thold_neg: 0
   V_thold_pos: 0
   act_delay: 0
-  obs_noise_std-sin_theta: 0.5
-  obs_noise_std-cos_theta: 0.5
-  obs_noise_std-sin_alpha: 0.5
-  obs_noise_std-cos_alpha: 0.5
-  obs_noise_std-theta_dot: 0.5
+  obs_noise_std-sin_theta: 0.02
+  obs_noise_std-cos_theta: 0.007
+  obs_noise_std-sin_alpha: 0.03
+  obs_noise_std-cos_alpha: 0.03
+  obs_noise_std-theta_dot: 0.3
   obs_noise_std-alpha_dot: 0.5
 
 # flag which determines if a randomized real environment should be used
@@ -60,12 +60,12 @@ prior_range:
   V_thold_neg: 0.1
   V_thold_pos: 0.1
   act_delay: 0.1
-  obs_noise_std-sin_theta: 0.1
-  obs_noise_std-cos_theta: 0.1
-  obs_noise_std-sin_alpha: 0.1
-  obs_noise_std-cos_alpha: 0.1
-  obs_noise_std-theta_dot: 0.1
-  obs_noise_std-alpha_dot: 0.1
+  obs_noise_std_sin_theta: 0.4
+  obs_noise_std_cos_theta: 0.3
+  obs_noise_std_sin_alpha: 0.2
+  obs_noise_std_cos_alpha: 0.4
+  obs_noise_std_theta_dot: 0.3
+  obs_noise_std_alpha_dot: 0.6
 
 dp_mapping:
   0: Dr
@@ -80,12 +80,12 @@ dp_mapping:
   9: V_thold_neg
   10: V_thold_pos
   11: act_delay
-  12: obs_noise_std-sin_theta
-  13: obs_noise_std-cos_theta
-  14: obs_noise_std-sin_alpha
-  15: obs_noise_std-cos_alpha
-  16: obs_noise_std-theta_dot
-  17: obs_noise_std-alpha_dot
+  12: obs_noise_std_sin_theta
+  13: obs_noise_std_cos_theta
+  14: obs_noise_std_sin_alpha
+  15: obs_noise_std_cos_alpha
+  16: obs_noise_std_theta_dot
+  17: obs_noise_std_alpha_dot
 
 algo_hparam:
   max_iter: 1

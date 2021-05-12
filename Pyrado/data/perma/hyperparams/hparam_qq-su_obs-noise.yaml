@@ -15,25 +15,28 @@ dp_selection:
 #  - V_thold_neg
 #  - V_thold_pos
 #  - act_delay
-  - obs_noise_std-sin_theta
-  - obs_noise_std-cos_theta
-  - obs_noise_std-sin_alpha
-  - obs_noise_std-cos_alpha
-  - obs_noise_std-theta_dot
-  - obs_noise_std-alpha_dot
+  - obs_noise_std_sin_theta
+  - obs_noise_std_cos_theta
+  - obs_noise_std_sin_alpha
+  - obs_noise_std_cos_alpha
+  - obs_noise_std_theta_dot
+  - obs_noise_std_alpha_dot
 
 explicit_prior_range:
-  Dr:
-    - 0.
-    - 1.
 
 # Define a new nominal value if required. E.g., adapt g assumption if we are on Mars
 updated_nominals:
+  obs_noise_std_sin_theta: 0.021
+  obs_noise_std_cos_theta: 0.01
+  obs_noise_std_sin_alpha: 0.027
+  obs_noise_std_cos_alpha: 0.033
+  obs_noise_std_theta_dot: 0.28
+  obs_noise_std_alpha_dot: 0.6
 
 # Update prior range for a dp
 prior_range:
 
 # update algo parameters
 algo_hparam:
-  num_sim_per_round: 10
-  num_sbi_rounds: 1
+  num_workers: 6
+  num_sim_per_round: 1000
