@@ -1,0 +1,58 @@
+env_name: qq-su  # required to load the settings.yaml
+algo_name: npsi  # required to load the settings.yaml
+
+# comment out the dp_parameter which should not be learned by NPDR
+dp_selection:
+#  - Dr
+#  - Dp
+#  - Rm
+#  - km
+  - Mr
+  - Mp
+  - Lr
+  - Lp
+#  - g
+#  - V_thold_neg
+#  - V_thold_pos
+#  - act_delay
+
+# Define a new nominal value if required. E.g., adapt g assumption if we are on Mars
+# updated_nominals:
+#  Rm: 9.28
+
+# Update prior range for a dp
+prior_range:
+  Mr: 0.15
+  Mp: 0.15
+  Lr: 0.15
+  Lp: 0.15
+
+# Update specific prior limits for a dp
+prior_limits:
+  Dr:
+    - 0.
+    - 14.999999873689376e-05
+  Dp:
+    - 0.
+    - 9.999999747378752e-06
+
+env_hparam:
+  dt: 0.004
+  max_steps: 1375
+  rollout_dir: "qq-su_ectrl_250Hz"
+
+embedding_name: bsemb # as default the `DeltaStepsEmbedding` is set
+embedding_hparam:
+  downsampling_factor: 1
+#  len_rollouts: 1375
+
+
+# update algo parameters
+algo_hparam:
+  max_iter: 1
+  num_real_rollouts: 5
+  num_sim_per_round: 5000
+  num_sbi_rounds: 5
+  len_segments: 50
+  num_workers: 8
+

@@ -1,0 +1,115 @@
+# This file describes the settings of the Quanser qube swing-up experiment for the NPDR paper
+# This file should remain unchanged if the general experiment set-up doesn't change!
+# Hyperparameters should be modified in the hparam_qq-su_<>.yaml file
+env_name: qq-su
+algo_name: npdr
+
+seed: 101
+sbi_subrtn_name: SNPE-C # choose between SNPE-A and SNPE-C
+
+env_hparam:
+  dt: 0.004
+  max_steps: 1375
+  act_delay: 0
+  randomized: False  # select if env is randomized
+  randomizer_std: 0.005  # percentage that defines std for randomized env (std = randomizer_std * nominal_dp)
+  rollout_dir:
+
+policy_name: qq-sub
+policy_hparam:
+  energy_gain: 0.587
+  ref_energy: 0.827
+subrtn_policy_name: power
+subrtn_policy_hparam:
+  max_iter: 5
+  pop_size: 50
+  num_init_states_per_domain: 4
+  num_is_samples: 10
+  expl_std_init: 2.0
+  expl_std_min: 0.02
+  symm_sampling: False
+
+
+embedding_name: bsemb # as default the `BayessimEmbedding` is set
+embedding_hparam:
+  downsampling_factor: 1
+
+# ground truth domain-parameters which emulate the parameters of a real environment
+dp_real:
+  Dr: 0.0000095 # dp_nom["Dr"] * 1.9
+  Dp: 0.0000004 # dp_nom["Dp"] * 0.4,
+  Rm: 9.24      # dp_nom["Rm"] * 1.1,
+  km: 0.0378    # dp_nom["km"] * 0.9,
+  Mr: 0.095     # dp_nom["Mr"] * 1.0,
+  Mp: 0.0252    # dp_nom["Mp"] * 1.05,
+  Lr: 0.085     # dp_nom["Lr"] * 1.0,
+  Lp: 0.12255   # dp_nom["Lp"] * 0.95,
+  g: 9.81       # dp_nom["g"] * 1.0
+  V_thold_neg: 0
+  V_thold_pos: 0
+  act_delay: 0
+
+# flag which determines if a randomized real environment should be used
+randomize_real_dp: False # Currently `True` is not supported by the script
+
+# Prior will be defined in a respective percentage range from the nominal parameters
+prior_range:
+  Dr: 0.1
+  Dp: 0.1
+  Rm: 0.4
+  km: 0.4
+  Mr: 0.4
+  Mp: 0.4
+  Lr: 0.4
+  Lp: 0.4
+  g: 0.4
+  V_thold_neg: 0.1
+  V_thold_pos: 0.1
+  act_delay: 0.1
+
+dp_mapping:
+  0: Dr
+  1: Dp
+  2: Rm
+  3: km
+  4: Mr
+  5: Mp
+  6: Lr
+  7: Lp
+  8: g
+  9: V_thold_neg
+  10: V_thold_pos
+  11: act_delay
+
+algo_hparam:
+  max_iter: 5
+  num_real_rollouts: 5
+  num_sim_per_round: 5000
+  num_sbi_rounds: 3
+  simulation_batch_size: 10
+  normalize_posterior: False
+  num_eval_samples: 10
+  len_segments: 200
+#  num_segments: None
+  num_workers: 10
+  use_rec_act: True
+
+  posterior_hparam:
+    hidden_features: 50
+    model: maf
+    num_transforms: 5
+    num_components: 10
+
+  subrtn_sbi_sampling_hparam:
+    sample_with_mcmc: true
+
+  subrtn_sbi_training_hparam:
+    num_atoms: 10
+    training_batch_size: 50
+    learning_rate: 0.0003
+    stop_after_epochs: 10
+    validation_fraction: 0.2
+    discard_prior_samples: False
+    retrain_from_scratch_each_round: False
+    show_train_summary: False
+    use_combined_loss: True

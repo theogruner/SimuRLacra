@@ -1,0 +1,33 @@
+env:
+  dt: 0.02
+  max_steps: 400
+seed: 10
+prior:
+  high:
+  - 1.7000000476837158
+  - 1.7000000476837158
+  low:
+  - 0.30000001192092896
+  - 0.30000001192092896
+policy_name: pb
+algo:
+  component_perturbation: 0.01
+  downsampling_factor: 1
+  normalize_posterior: false
+  num_components: 5
+  num_eval_samples: 1000
+  num_real_rollouts: 1
+  num_sbi_rounds: 3
+  num_segments: 1
+  num_sim_per_round: 200
+  num_workers: 20
+  simulation_batch_size: 10
+  subrtn_policy: None
+  subrtn_sbi_training_hparam:
+    learning_rate: 0.0005
+    retrain_from_scratch_each_round: false
+    show_train_summary: false
+    stop_after_epochs: 20
+    training_batch_size: 50
+    validation_fraction: 0.2
+algo_name: bayessim
