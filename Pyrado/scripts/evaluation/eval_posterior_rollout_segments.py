@@ -64,8 +64,16 @@ from pyrado.utils.math import rmse
 
 
 if __name__ == "__main__":
+    parser = get_argparser()
+    parser.add_argument(
+        "--data_type",
+        type=str,
+        default="observations",
+        help="Select data type for plotting ('observations' or 'states'); Default: 'observations",
+    )
+
     # Parse command line arguments
-    args = get_argparser().parse_args()
+    args = parser.parse_args()
     if not isinstance(args.num_samples, int) or args.num_samples < 1:
         raise pyrado.ValueErr(given=args.num_samples, ge_constraint="1")
     if not isinstance(args.num_rollouts_per_config, int) or args.num_rollouts_per_config < 1:
@@ -297,7 +305,7 @@ if __name__ == "__main__":
         show_act=False,
         save_dir=ex_dir if args.save else None,
         x_limits=args.cut_rollout,
-        data_field="states",
+        data_field=args.data_type,
     )
 
     plt.show()

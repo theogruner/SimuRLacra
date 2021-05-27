@@ -1060,6 +1060,30 @@ def draw_posterior_pairwise_scatter(
             legend_labels.append("real")
         color_palette.insert(len(dp_samples) - 1, (0, 0, 0))
 
+    # Get the nominal domain parameters
+    if isinstance(env_sim, (SimEnv, EnvWrapper)):
+        dp_nom = to.tensor(
+            [env_sim.domain_param[v] if v in env_sim.domain_param.keys() else 0 for v in dp_mapping.values()]
+        )
+        dp_samples.append(to.atleast_2d(dp_nom))
+        if legend_labels is not None:
+            legend_labels.append("nom")
+        color_palette.insert(len(dp_samples) - 1, sns.color_palette()[0])
+
+    # Reconstruct ground truth domain parameters if they exist
+    dp_gt = None
+    if typed_env(env_real, DomainRandWrapperBuffer):
+        dp_gt = to.stack([to.stack(list(d.values())) for d in env_real.randomizer.get_params(-1, "list", "torch")])
+    elif isinstance(env_real, SimEnv):
+        dp_gt = to.tensor([env_real.domain_param[v] for v in dp_mapping.values()])
+        dp_gt = to.atleast_2d(dp_gt)
+    if dp_gt is not None:
+        # Append ground truth parameters at the end if they exist
+        dp_samples.append(dp_gt)
+        if legend_labels is not None:
+            legend_labels.append("real")
+        color_palette.insert(len(dp_samples) - 1, (0, 0, 0))
+
     # Generate the indices for the subplots
     if marginal_layout == "inside":
         # Set the indices for the marginal plots

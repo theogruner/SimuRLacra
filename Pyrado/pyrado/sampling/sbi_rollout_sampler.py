@@ -353,10 +353,10 @@ class RealRolloutSamplerForSBI(RolloutSamplerForSBI, Serializable):
 
         # Compute the features
         data_real = data_real.unsqueeze(0)  # only one target domain rollout
-        data_real = self._embedding(Embedding.pack(data_real))  # shape [1, 1, len_time_series * data_dim]
+        data_real = self._embedding(Embedding.pack(data_real))  # shape [1, dim_feat]
 
         # Check shape (here no batching and always one rollout)
-        if data_real.shape[0] != 1:
+        if data_real.shape[0] != 1 or data_real.ndim != 2:
             raise pyrado.ShapeErr(given=data_real, expected_match=(1, -1))
 
         return data_real, ro
@@ -447,10 +447,10 @@ class RecRolloutSamplerForSBI(RealRolloutSamplerForSBI, Serializable):
 
         # Compute the features
         data_real = data_real.unsqueeze(0)  # only one target domain rollout
-        data_real = self._embedding(Embedding.pack(data_real))  # shape [1, 1, len_time_series * data_dim]
+        data_real = self._embedding(Embedding.pack(data_real))  # shape [1, dim_feat]
 
         # Check shape (here no batching and always one rollout)
-        if data_real.shape[0] != 1:
+        if data_real.shape[0] != 1 or data_real.ndim != 2:
             raise pyrado.ShapeErr(given=data_real, expected_match=(1, -1))
 
         return data_real, ro

@@ -27,7 +27,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 """
-Domain parameter identification experiment on the One-Mass-Oscillator environment using Neural Posterior Domain Randomization
+Script to identify the domain parameters of the Pendulum environment using Neural Posterior Domain Randomization
 """
 from copy import deepcopy
 
@@ -103,7 +103,7 @@ if __name__ == "__main__":
         # num_recurrent_layers=1,
         # output_size=1,
     )
-    embedding = create_embedding(BayesSimEmbedding.name, env_sim.spec, **embedding_hparam)
+    embedding = create_embedding(DynamicTimeWarpingEmbedding.name, env_sim.spec, **embedding_hparam)
 
     # Posterior (normalizing flow)
     posterior_hparam = dict(model="maf", hidden_features=20, num_transforms=5)
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     algo_hparam = dict(
         max_iter=1,
         num_real_rollouts=num_real_rollouts,
-        num_sim_per_round=500,
+        num_sim_per_round=400,
         num_sbi_rounds=3,
         simulation_batch_size=10,
         normalize_posterior=False,
@@ -133,7 +133,7 @@ if __name__ == "__main__":
             # max_num_epochs=5,  # only use for debugging
         ),
         subrtn_sbi_sampling_hparam=dict(sample_with_mcmc=False),
-        num_workers=1,
+        num_workers=4,
     )
     algo = NPDR(
         ex_dir,

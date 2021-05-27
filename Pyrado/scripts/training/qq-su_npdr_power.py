@@ -27,7 +27,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 """
-Domain parameter identification experiment on the Quanser Qube environment using Neural Posterior Domain Randomization
+Train an agent to solve the Quanser Qube environment using Neural Posterior Domain Randomization
 """
 import torch as to
 from sbi import utils

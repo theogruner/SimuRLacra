@@ -38,7 +38,6 @@ from colorama import Fore, Style
 from sbi import utils as utils
 from sbi.inference import NeuralInference
 from sbi.inference.posteriors.direct_posterior import DirectPosterior
-from sbi.inference.snpe import PosteriorEstimator
 from sbi.utils.user_input_checks import prepare_for_sbi
 from torch.distributions import Distribution, Normal
 from torch.utils.tensorboard import SummaryWriter
@@ -121,7 +120,6 @@ class SBIBase(InterruptableAlgorithm, ABC):
                        for generating the target domain rollouts, but also optimized in simulation
         :param dp_mapping: mapping from subsequent integers (starting at 0) to domain parameter names (e.g. mass)
         :param prior: distribution used by sbi as a prior
-        :param subrtn_sbi_class: sbi algorithm calls for executing the LFI, e.g. SNPE
         :param embedding: embedding used for pre-processing the data before passing it to the posterior
         :param num_checkpoints: total number of checkpoints
         :param init_checkpoint: initial value of the cyclic counter, defaults to 0, use negative values can to mark
@@ -147,8 +145,6 @@ class SBIBase(InterruptableAlgorithm, ABC):
         :param posterior_hparam: hyper parameters for creating the posterior's density estimator
         :param subrtn_sbi_training_hparam: dict forwarded to sbi's `PosteriorEstimator.train()` function like
                                            `training_batch_size`, `learning_rate`, `retrain_from_scratch_each_round`, ect.
-        :param subrtn_sbi_sampling_hparam: keyword arguments forwarded to sbi's `DirectPosterior.sample()` function like
-                                          `sample_with_mcmc`, ect.
         :param simulation_batch_size: batch size forwarded to the sbi toolbox, requires batched simulator
         :param normalize_posterior: if `True` the normalization of the posterior density is enforced by sbi
         :param subrtn_policy: algorithm which performs the optimization of the behavioral policy (and value-function)
@@ -290,15 +286,9 @@ class SBIBase(InterruptableAlgorithm, ABC):
         :return: proposal for simulating with sbi
         """
         if self._curr_iter == 0:
-            # Multi-round or single-round sbi, 1st iteration
             proposal = self._sbi_prior
         else:
-            if self.num_sbi_rounds == 1:
-                # Single-round sbi, 2nd iteration
-                prefix = f"iter_{self._curr_iter - 1}"
-            else:
-                # Multi-round sbi, 2nd iteration
-                prefix = f"iter_{self._curr_iter - 1}_round_{self.num_sbi_rounds - 1}"
+            prefix = f"iter_{self._curr_iter - 1}_round_{self.num_sbi_rounds - 1}"
             proposal = pyrado.load("posterior.pt", self._save_dir, prefix=prefix)
         return proposal
 
@@ -350,29 +340,50 @@ class SBIBase(InterruptableAlgorithm, ABC):
         else:
             rollout_worker = RealRolloutSamplerForSBI(env, policy, embedding, num_segments, len_segments)
 
-        data_real = []
-        rollouts_real = []
+        # Initialize data containers
+        data_real = None
+        rollouts_real = None
+        num_found_rollouts = 0
+        if save_dir is not None:
+            try:
+                data_real = pyrado.load("data_real.pt", save_dir, prefix=prefix)
+                rollouts_real = pyrado.load("rollouts_real.pkl", save_dir, prefix=prefix)
+                if not data_real.shape[0] == len(rollouts_real):
+                    raise pyrado.ShapeErr(
+                        msg=f"Found {data_real.shape[0]} entries in data_real.pt, but {len(rollouts_real)} rollouts in "
+                        f"rollouts_real.pkl!"
+                    )
+                num_found_rollouts = len(rollouts_real)
+                print_cbt(f"Found {num_found_rollouts} rollout(s) in {save_dir}.", "w")
+            except FileNotFoundError:
+                pass  # in the first attempt no files can be found
+
         collect_str = f"Collecting data" if prefix == "" else f"Collecting data using {prefix}_policy"
         for _ in tqdm(
-            range(num_rollouts),
+            range(num_found_rollouts, num_rollouts),
             total=num_rollouts,
             desc=Fore.CYAN + Style.BRIGHT + collect_str + Style.RESET_ALL,
             unit="rollouts",
             file=sys.stdout,
         ):
+            # Do the rollout
             data, rollout = rollout_worker()
-            data_real.append(data)
-            rollouts_real.append(rollout)
 
-        # Stacked to tensor of shape [1, num_rollouts * dim_feat]
-        data_real = to.cat(data_real, dim=1)
+            # Fill data container
+            if data_real is None or rollouts_real is None:
+                data_real = data  # data is of shape [1, dim_feat]
+                rollouts_real = [rollout]
+            else:
+                data_real = to.cat([data_real, data], dim=1)  # stack to final shape [1, num_rollouts * dim_feat]
+                rollouts_real.append(rollout)
+
+            # Optionally save the data (do this at every iteration to continue)
+            if save_dir is not None:
+                pyrado.save(data_real, "data_real.pt", save_dir, prefix=prefix)
+                pyrado.save(rollouts_real, "rollouts_real.pkl", save_dir, prefix=prefix)
+
         if data_real.shape != (1, num_rollouts * embedding.dim_output):
             raise pyrado.ShapeErr(given=data_real, expected_match=(1, num_rollouts * embedding.dim_output))
-
-        # Optionally save the data
-        if save_dir is not None:
-            pyrado.save(data_real, "data_real.pt", save_dir, prefix=prefix)
-            pyrado.save(rollouts_real, "rollouts_real.pkl", save_dir, prefix=prefix)
 
         return data_real, rollouts_real
 
@@ -577,7 +588,7 @@ class SBIBase(InterruptableAlgorithm, ABC):
 
             else:
                 # Return as dict
-                dp_vals = np.atleast_1d(dp_vals.numpy())
+                dp_vals = to.atleast_1d(dp_vals).numpy()
                 domain_param_ml = [dict(zip(dp_mapping.values(), dpv)) for dpv in dp_vals]
                 domain_params_ml.append(domain_param_ml)
 

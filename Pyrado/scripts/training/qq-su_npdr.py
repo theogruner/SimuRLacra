@@ -27,7 +27,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 """
-Domain parameter identification experiment on the Quanser Qube environment using Neural Posterior Domain Randomization
+Script to identify the domain parameters of the Pendulum environment using Neural Posterior Domain Randomization
 """
 import os.path as osp
 

@@ -30,12 +30,10 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple, Union
 from warnings import warn
 
+import dtw
 import torch as to
 import torch.nn as nn
-from dtw import dtw
-from dtw.stepPattern import rabinerJuangStepPattern
 from torch.nn.utils import convert_parameters as cp
-from torch.utils.data import DataLoader, Dataset
 
 import pyrado
 from pyrado.policies.initialization import init_param
@@ -531,7 +529,7 @@ class DynamicTimeWarpingEmbedding(Embedding):
         self,
         spec: EnvSpec,
         dim_data: int,
-        step_pattern: Optional[str] = None,
+        step_pattern: Optional[Union[str, dtw.stepPattern.StepPattern]] = None,
         downsampling_factor: int = 1,
         idcs_data: Optional[Union[Tuple[int], List[int]]] = None,
         use_cuda: bool = False,
@@ -543,9 +541,9 @@ class DynamicTimeWarpingEmbedding(Embedding):
         :param dim_data: number of dimensions of one data sample, i.e. one time step. By default, this is the sum of the
                          states and action spaces' flat dimensions. This number is doubled if the embedding
                          target domain data.
-        :param step_pattern: method passed to dtw-python for computing the distance, e.g. `"symmetric2"` to use
-                             dtw-python's default. Here, the default is set to the Rabiner-Juang type VI-c unsmoothed
-                             recursion step pattern
+        :param step_pattern: method passed to dtw-python for computing the distance. Here the same default as in the
+                             dtw-python package is used ("symmetric2"). To for example use  the Rabiner-Juang type VI-c
+                             unsmoothed recursion step pattern pass `dtw.stepPattern.rabinerJuangStepPattern(6, "c")`
         :param downsampling_factor: skip evey `downsampling_factor` time series sample, the downsampling is done in the
                                     base class before calling `summary_statistic()`
         :param idcs_data: list or tuple of integers to select specific states from the data (always using all actions),
@@ -555,12 +553,12 @@ class DynamicTimeWarpingEmbedding(Embedding):
 
         super().__init__(spec, dim_data, downsampling_factor, idcs_data, use_cuda)
 
-        self.step_pattern = step_pattern or rabinerJuangStepPattern(6, "c")
+        self.step_pattern = step_pattern or "symmetric2"
         self.to(self.device)
 
     @property
     def dim_output(self) -> int:
-        return 1
+        return self._env_spec.state_space.flat_dim
 
     @to.no_grad()
     def summary_statistic(self, data: to.Tensor) -> to.Tensor:
@@ -589,12 +587,10 @@ class DynamicTimeWarpingEmbedding(Embedding):
             data_real = data_real[:, : self._env_spec.state_space.flat_dim]
 
         # Use the dtw package to compute the distance using the specified metric
-        data_sim, data_real = data_sim.numpy(), data_real.numpy()
-        alignment = dtw(
-            data_sim,
-            data_real,
-            open_end=True,
-            step_pattern=self.step_pattern,
-        )
+        data_sim, data_real = data_sim.T.numpy(), data_real.T.numpy()
+        alignment = [
+            dtw.dtw(ds, dr, open_end=True, step_pattern=self.step_pattern, distance_only=True).distance
+            for ds, dr in zip(data_sim, data_real)
+        ]
 
-        return to.as_tensor(alignment.distance, dtype=to.get_default_dtype()).view(1)
+        return to.as_tensor(alignment, dtype=to.get_default_dtype()).view(-1)
