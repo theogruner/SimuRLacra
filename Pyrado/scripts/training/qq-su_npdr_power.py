@@ -174,6 +174,7 @@ if __name__ == "__main__":
             show_train_summary=False,  # default: False
         ),
         subrtn_sbi_sampling_hparam=dict(sample_with_mcmc=True),
+        train_initial_policy=True,
         subrtn_policy_snapshot_mode="best",
         num_workers=args.num_workers,
     )

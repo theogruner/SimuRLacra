@@ -167,6 +167,7 @@ if __name__ == "__main__":
             # max_num_epochs=5,  # only use for debugging
         ),
         subrtn_policy_snapshot_mode="best",
+        train_initial_policy=True,
         num_workers=args.num_workers,
     )
     algo = BayesSim(

@@ -93,6 +93,7 @@ algo_hparam:
 #  num_segments: None
   num_workers: 10
   use_rec_act: True
+  train_initial_policy: True
 
   posterior_hparam:
     hidden_features: 50

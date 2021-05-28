@@ -139,7 +139,7 @@ class BayesSim(SBIBase):
         self.save_snapshot()
 
         if self.curr_checkpoint == -1:
-            if self._subrtn_policy is not None:
+            if self._subrtn_policy is not None and self._train_initial_policy:
                 # Add dummy values of variables that are logger later
                 self.logger.add_value("avg log prob", -pyrado.inf)
 

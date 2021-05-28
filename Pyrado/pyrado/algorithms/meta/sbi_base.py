@@ -104,6 +104,7 @@ class SBIBase(InterruptableAlgorithm, ABC):
         normalize_posterior: bool = True,
         subrtn_policy: Optional[Algorithm] = None,
         subrtn_policy_snapshot_mode: str = "latest",
+        train_initial_policy: bool = True,
         thold_succ_subrtn: float = -pyrado.inf,
         warmstart: bool = True,
         num_workers: int = 4,
@@ -149,6 +150,9 @@ class SBIBase(InterruptableAlgorithm, ABC):
         :param normalize_posterior: if `True` the normalization of the posterior density is enforced by sbi
         :param subrtn_policy: algorithm which performs the optimization of the behavioral policy (and value-function)
         :param subrtn_policy_snapshot_mode: snapshot mode for saving during policy optimization
+        :param train_initial_policy: choose if a policy should be pretrained in the first iteration
+                                     before collecting real rollouts. Choose `False`, if you want to use a pre-defined
+                                     policy.
         :param thold_succ_subrtn: success threshold on the simulated system's return for the subroutine, repeat the
                                   subroutine until the threshold is exceeded or the for a given number of iterations
         :param warmstart: initialize the policy (and value function) parameters with the one of the previous iteration.
@@ -224,6 +228,7 @@ class SBIBase(InterruptableAlgorithm, ABC):
         if isinstance(self._subrtn_policy, Algorithm):
             self._subrtn_policy_snapshot_mode = subrtn_policy_snapshot_mode
             self._subrtn_policy.save_name = "subrtn_policy"
+            self._train_initial_policy = train_initial_policy
             # Check that the behavioral policy is the one that is being updated
             if self._subrtn_policy.policy is not self.policy:
                 raise pyrado.ValueErr(
