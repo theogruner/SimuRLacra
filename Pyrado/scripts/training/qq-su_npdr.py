@@ -72,7 +72,7 @@ if __name__ == "__main__":
             f"{NPDR.name}_{QQubeSwingUpAndBalanceCtrl.name}",
             num_segs_str + len_seg_str + seed_str,
         )
-        t_end = 5.5  # s
+        t_end = 5  # s
     else:
         ex_dir = setup_experiment(
             QQubeSwingUpSim.name,
@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
     # Create the ground truth target domain and the behavioral policy
     if ectl:
-        env_real = osp.join(pyrado.EVAL_DIR, "qq-su_ectrl_250Hz")
+        env_real = osp.join(pyrado.EVAL_DIR, "qq-su_ectrl_250Hz")  # 5s long
         policy = QQubeSwingUpAndBalanceCtrl(env_sim.spec)  # replaced by the recorded actions if use_rec_act=True
     else:
         env_real = osp.join(pyrado.EVAL_DIR, "qq_sin_2Hz_1V_250Hz")

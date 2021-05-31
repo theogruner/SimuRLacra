@@ -47,6 +47,7 @@ from pyrado.sampling.rollout import rollout
 from pyrado.sampling.sbi_embeddings import Embedding
 from pyrado.sampling.step_sequence import StepSequence, check_act_equal
 from pyrado.spaces import BoxSpace
+from pyrado.utils.checks import check_all_lengths_equal
 from pyrado.utils.data_types import EnvSpec
 from pyrado.utils.input_output import print_cbt_once
 
@@ -400,6 +401,7 @@ class RecRolloutSamplerForSBI(RealRolloutSamplerForSBI, Serializable):
         for root, dirs, files in os.walk(rollouts_dir):
             dirs.clear()  # prevents walk() from going into subdirectories
             rollouts_rec = [pyrado.load(name=f, load_dir=root) for f in files if f.startswith("rollout")]
+            check_all_lengths_equal(rollouts_rec)
         if not rollouts_rec:
             raise pyrado.ValueErr(msg="No rollouts have been found!")
 
