@@ -22,7 +22,8 @@ dp_selection:
 #  Rm: 9.28
 
 env_hparam:
-  rollout_dir: "qq-su_ectrl_250Hz"
+  max_steps: 2500
+  # rollout_dir: "qq-su_ectrl_250Hz"
 
 # Update prior range for a dp
 prior_range:
@@ -47,7 +48,7 @@ prior_limits:
 
 # update algo parameters
 algo_hparam:
-  max_iter: 1
+  max_iter: 10
   num_sim_per_round: 2000
   # simulation_batch_size: 1
   num_sbi_rounds: 3
