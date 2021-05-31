@@ -1,0 +1,22 @@
+data_set:
+  name: qq-su
+  ratio_train: 0.9
+  scale_min_max_data: false
+  standardize_data: false
+  window_size: 50
+data_set_name: qq-su
+seed: None
+policy:
+  hidden_size: 50
+  num_recurrent_layers: 1
+algo:
+  cascaded: false
+  loss_fcn: MSELoss
+  max_iter: 1500
+  optim_class: <class 'torch.optim.adam.Adam'>
+  optim_hparam:
+    eps: 1.0e-08
+    lr: 0.002
+    weight_decay: 0.0001
+  windowed: false
+algo_name: tspred

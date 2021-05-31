@@ -68,9 +68,9 @@ if __name__ == "__main__":
         _, vals = skyline(
             dt=dt, t_end=20.0, t_intvl_space=BoxSpace(0.5, 3, shape=(1,)), val_space=BoxSpace(-2.0, 3.0, shape=(1,))
         )
-        data = to.from_numpy(vals).view(-1, 1)
+        data = to.from_numpy(vals).to(dtype=to.get_default_dtype()).view(-1, 1)
     elif "qq-su" in data_set_name:
-        data = pyrado.load("rollout_real_2021-02-10_14-24-04.pkl", osp.join(pyrado.EVAL_DIR, "qq-su_ectrl_250Hz"))
+        data = pyrado.load("rollout_real_2021-04-14_18-34-53.pkl", osp.join(pyrado.EVAL_DIR, "qq-su_ectrl_250Hz"))
         assert isinstance(data, StepSequence)
         assert hasattr(data, "states")
         states = to.from_numpy(data.states).to(dtype=to.get_default_dtype())
@@ -105,11 +105,11 @@ if __name__ == "__main__":
 
     # Algorithm
     algo_hparam = dict(
-        max_iter=2000,
-        windowed=True,
+        max_iter=1500,
+        windowed=False,
         cascaded=False,
         optim_class=optim.Adam,
-        optim_hparam=dict(lr=5e-3, eps=1e-8, weight_decay=1e-4),  # momentum=0.7
+        optim_hparam=dict(lr=2e-3, eps=1e-8, weight_decay=1e-4),  # momentum=0.7
         loss_fcn=nn.MSELoss(),
     )
     algo = TSPred(ex_dir, dataset, policy, **algo_hparam)

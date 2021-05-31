@@ -32,6 +32,7 @@ Script to identify the domain parameters of the Pendulum environment using Neura
 import os.path as osp
 
 import torch as to
+import torch.nn as nn
 from sbi import utils
 from sbi.inference import SNPE_C
 
@@ -43,7 +44,7 @@ from pyrado.logger.experiment import save_dicts_to_yaml, setup_experiment
 from pyrado.policies.feed_forward.dummy import DummyPolicy
 from pyrado.policies.feed_forward.time import TimePolicy
 from pyrado.policies.special.environment_specific import QQubeSwingUpAndBalanceCtrl
-from pyrado.sampling.sbi_embeddings import BayesSimEmbedding
+from pyrado.sampling.sbi_embeddings import BayesSimEmbedding, RNNEmbedding
 from pyrado.utils.argparser import get_argparser
 from pyrado.utils.sbi import create_embedding
 
@@ -84,7 +85,7 @@ if __name__ == "__main__":
     pyrado.set_seed(args.seed, verbose=True)
 
     # Environments
-    env_sim_hparams = dict(dt=1 / 250.0, max_steps=t_end * 250)
+    env_sim_hparams = dict(dt=1 / 250.0, max_steps=int(t_end * 250))
     env_sim = QQubeSwingUpSim(**env_sim_hparams)
     env_sim = ActDelayWrapper(env_sim)
 
@@ -167,17 +168,19 @@ if __name__ == "__main__":
     prior = utils.BoxUniform(**prior_hparam)
 
     # Time series embedding
+    lstm = pyrado.load("policy.pt", osp.join(pyrado.EXP_DIR, "qq-tspred", "lstm", "2021-05-31_19-48-32"))
     embedding_hparam = dict(
         downsampling_factor=1,
-        idcs_data=(0, 1),
-        # len_rollouts=env_sim.max_steps,
-        # recurrent_network_type=nn.RNN,
+        # idcs_data=(0, 1),
+        len_rollouts=env_sim.max_steps,
+        recurrent_network_type=nn.LSTM,
         # only_last_output=True,
-        # hidden_size=20,
-        # num_recurrent_layers=1,
-        # output_size=1,
+        hidden_size=lstm.rnn_layers.hidden_size,
+        num_recurrent_layers=lstm.num_recurrent_layers,
+        output_size=lstm.output_layer.out_features,
     )
-    embedding = create_embedding(BayesSimEmbedding.name, env_sim.spec, **embedding_hparam)
+    embedding = create_embedding(RNNEmbedding.name, env_sim.spec, **embedding_hparam)
+    embedding.init_param(init_values=lstm.param_values)
 
     # Posterior (normalizing flow)
     posterior_hparam = dict(model="maf", hidden_features=50, num_transforms=10)
@@ -186,8 +189,8 @@ if __name__ == "__main__":
     algo_hparam = dict(
         max_iter=1,
         num_real_rollouts=1,
-        num_sim_per_round=3000,
-        num_sbi_rounds=5,
+        num_sim_per_round=2000,
+        num_sbi_rounds=3,
         simulation_batch_size=10,
         normalize_posterior=False,
         num_eval_samples=10,
@@ -208,7 +211,7 @@ if __name__ == "__main__":
             # max_num_epochs=5,  # only use for debugging
         ),
         subrtn_sbi_sampling_hparam=dict(sample_with_mcmc=True),
-        num_workers=12,
+        num_workers=20,
     )
     algo = NPDR(
         ex_dir,

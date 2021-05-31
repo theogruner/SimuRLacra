@@ -27,7 +27,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 from warnings import warn
 
 import dtw
@@ -400,6 +400,7 @@ class RNNEmbedding(Embedding):
         recurrent_network_type: type = nn.RNN,
         only_last_output: bool = False,
         len_rollouts: int = None,
+        output_nonlin: Callable = None,
         dropout: float = 0.0,
         init_param_kwargs: Optional[dict] = None,
         downsampling_factor: int = 1,
@@ -423,6 +424,7 @@ class RNNEmbedding(Embedding):
                                  constructor does not need to know how long the rollouts are.
         :param len_rollouts: number of time steps per rollout without considering a potential downsampling later
                              (must be the same for all rollouts)
+        :param output_nonlin: nonlinearity for output layer
         :param dropout: dropout probability, default = 0 deactivates dropout
         :param init_param_kwargs: additional keyword arguments for the policy parameter initialization
         :param recurrent_net_kwargs: any extra kwargs are passed to the recurrent net's constructor
@@ -459,6 +461,7 @@ class RNNEmbedding(Embedding):
 
         # Create the output layer
         self.output_layer = nn.Linear(hidden_size, output_size)
+        self.output_nonlin = output_nonlin
 
         # Initialize parameter values
         init_param_kwargs = init_param_kwargs if init_param_kwargs is not None else dict()
@@ -511,6 +514,8 @@ class RNNEmbedding(Embedding):
 
         # Pass through the final output layer
         out = self.output_layer(out)
+        if self.output_nonlin is not None:
+            out = self.output_nonlin(out)
 
         # Reshape the outputs of every time step into a 1-dim feature vector
         return out.reshape(-1)
