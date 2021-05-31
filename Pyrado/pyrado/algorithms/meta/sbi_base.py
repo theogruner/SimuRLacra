@@ -195,7 +195,7 @@ class SBIBase(InterruptableAlgorithm, ABC):
         )
 
         self._env_sim_sbi = env_sim  # will be randomized explicitly by sbi
-        self._env_sim_trn = DomainRandWrapperBuffer(deepcopy(env_sim), randomizer=None, selection="random")
+        self._env_sim_trn = DomainRandWrapperBuffer(deepcopy(env_sim), randomizer=None, selection="cyclic")
         self._env_real = env_real
         self.dp_mapping = dp_mapping
         self._embedding = embedding
@@ -566,7 +566,7 @@ class SBIBase(InterruptableAlgorithm, ABC):
         :param subrtn_sbi_sampling_hparam: keyword arguments forwarded to sbi's `DirectPosterior.sample()` function
         :param return_as_tensor: if `True`, return the most likely domain parameter sets as a tensor of shape
                                  [num_iter, num_ml_samples, dim_domain_param], else as a list of dict
-        :return: most likely domain parameters sets sampled form the posterior
+        :return: most likely domain parameters sets sampled form the posterior, and the associated log probabilities
         """
         if not isinstance(num_ml_samples, int) or num_ml_samples < 1:
             raise pyrado.ValueErr(given=num_ml_samples, g_constraint="0 (int)")
@@ -583,10 +583,12 @@ class SBIBase(InterruptableAlgorithm, ABC):
 
         # Extract the most likely domain parameter sets for every target domain data set
         domain_params_ml = []
+        log_probs_ml = to.empty(log_probs.shape[0], num_ml_samples)
         for idx_r in range(domain_params.shape[0]):
-            idcs_ml = to.argsort(log_probs[idx_r, :], descending=True)
-            idcs_sel = idcs_ml[:num_ml_samples]
-            dp_vals = domain_params[idx_r, idcs_sel, :]
+            idcs_sorted = to.argsort(log_probs[idx_r, :], descending=True)
+            idcs_ml = idcs_sorted[:num_ml_samples]
+            log_probs_ml[idx_r, :] = log_probs[idx_r, idcs_ml]
+            dp_vals = domain_params[idx_r, idcs_ml, :]
 
             if return_as_tensor:
                 # Return as tensor
@@ -614,7 +616,7 @@ class SBIBase(InterruptableAlgorithm, ABC):
                     f"are {len(domain_params_ml[0][0])}!"
                 )
 
-        return domain_params_ml, log_probs
+        return domain_params_ml, log_probs_ml
 
     @staticmethod
     @to.no_grad()

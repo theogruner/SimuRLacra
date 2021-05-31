@@ -27,22 +27,22 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 """
-Simulate (with animation) a rollout in a live perturbed environment.
+Simulate (with animation) a rollout with domain parameters drawn from a posterior distribution obtained from running
+Neural Posterior Domain Randomization or BayesSim.
 """
+import operator
+
+import prettyprinter
+import torch as to
+
 import pyrado
 from pyrado.algorithms.base import Algorithm
+from pyrado.algorithms.meta.bayessim import BayesSim
+from pyrado.algorithms.meta.npdr import NPDR
 from pyrado.algorithms.meta.sbi_base import SBIBase
-from pyrado.domain_randomization.default_randomizers import create_default_randomizer
-from pyrado.domain_randomization.domain_parameter import UniformDomainParam
 from pyrado.domain_randomization.utils import print_domain_params
-from pyrado.environment_wrappers.action_delay import ActDelayWrapper
-from pyrado.environment_wrappers.domain_randomization import (
-    DomainRandWrapper,
-    DomainRandWrapperBuffer,
-    DomainRandWrapperLive,
-)
 from pyrado.logger.experiment import ask_for_experiment
-from pyrado.sampling.rollout import after_rollout_query, rollout
+from pyrado.sampling.rollout import rollout
 from pyrado.utils.argparser import get_argparser
 from pyrado.utils.data_types import RenderMode
 from pyrado.utils.experiments import load_experiment
@@ -58,51 +58,73 @@ if __name__ == "__main__":
     # Get the experiment's directory to load from
     ex_dir = ask_for_experiment(hparam_list=args.show_hparams) if args.dir is None else args.dir
 
-    # Get the simulation environment
+    # Load the experiment
     env, policy, kwout = load_experiment(ex_dir, args)
+    data_real = kwout["data_real"]
+    if args.iter == -1:
+        # This script is not made to evaluate multiple iterations at once, thus we always select the data one iteration
+        data_real = to.atleast_2d(data_real[args.iter])
 
     # Override the time step size if specified
     if args.dt is not None:
         env.dt = args.dt
 
+    # Use the environments number of steps in case of the default argument (inf)
+    max_steps = env.max_steps if args.max_steps == pyrado.inf else args.max_steps
+
     # Check which algorithm was used in the experiment
     algo = Algorithm.load_snapshot(load_dir=ex_dir, load_name="algo")
+    if not isinstance(algo, (NPDR, BayesSim)):
+        raise pyrado.TypeErr(given=algo, expected_type=(NPDR, BayesSim))
 
-    if algo.name in ["npdr", "bayessim"]:
-        # Sample domain parameters from the posterior, and
-        domain_params, _ = SBIBase.eval_posterior(
-            kwout["posterior"],
-            kwout["observations_real"],
-            num_samples=args.num_samples,
-            calculate_log_probs=False,
-            normalize_posterior=False,
-            subrtn_sbi_sampling_hparam=None,
-        )
-        env = DomainRandWrapperBuffer(env, randomizer=None, selection="random")
-        SBIBase.fill_domain_param_buffer(env, algo.dp_mapping, domain_params.squeeze(0))
-        print_cbt("Using loaded randomizer obtained from posterior.", "c")
+    # Sample domain parameters from the posterior. Use all samples, by hijacking the get_ml_posterior_samples to obtain
+    # them sorted.
+    domain_params, log_probs = SBIBase.get_ml_posterior_samples(
+        dp_mapping=algo.dp_mapping,
+        posterior=kwout["posterior"],
+        data_real=data_real,
+        num_eval_samples=args.num_samples,
+        num_ml_samples=args.num_samples,
+        calculate_log_probs=True,
+        normalize_posterior=args.normalize,
+        subrtn_sbi_sampling_hparam=dict(sample_with_mcmc=args.use_mcmc),
+        return_as_tensor=False,
+    )
+    assert len(domain_params) == 1  # the list has as many elements as evaluated iterations
+    domain_params = domain_params[0]
 
-    elif not isinstance(env, DomainRandWrapper):
-        # Add default domain randomization wrapper with action delay
-        randomizer = create_default_randomizer(env)
-        env = ActDelayWrapper(env)
-        randomizer.add_domain_params(UniformDomainParam(name="act_delay", mean=5, halfspan=5, clip_lo=0, roundint=True))
-        env = DomainRandWrapperLive(env, randomizer)
-        print_cbt("Using default randomizer with additional action delay.", "c")
-
+    if args.normalize:
+        # If the posterior is normalized, we do not rescale the probabilities since they already sum to 1
+        probs = to.exp(log_probs)
     else:
-        print_cbt("Using loaded randomizer.", "c")
+        # If the posterior is not normalized, we rescale the probabilities to make them interpretable
+        probs = to.exp(log_probs - log_probs.max())  # scale the probabilities to [0, 1]
+    probs = probs.T
+
+    # Select edge cases
+    idcs_sel = (0, 1, -2, -1)
+    print_cbt(f"Selected the indices {idcs_sel}", "c", bright=True)
+    domain_params = operator.itemgetter(*idcs_sel)(domain_params)
+    probs = operator.itemgetter(*idcs_sel)(probs)
+
+    # Get one fixed initial state to make them comparable
+    init_state = env.init_space.sample_uniform()
 
     # Simulate
-    done, state, param = False, None, None
-    while not done:
+    normalized_str = "(normalized)" if args.normalize else "(rescaled)"
+    for domain_param, prob in zip(domain_params, probs):
         ro = rollout(
             env,
             policy,
-            render_mode=RenderMode(text=args.verbose, video=True),
+            render_mode=RenderMode(video=args.animation, render=args.render),
             eval=True,
-            reset_kwargs=dict(domain_param=param, init_state=state),
+            reset_kwargs=dict(domain_param=domain_param, init_state=init_state),
         )
-        print_domain_params(env.domain_param)
-        print_cbt(f"Return: {ro.undiscounted_return()}", "g", bright=True)
-        done, state, param = after_rollout_query(env, policy, ro)
+        print_cbt(
+            f"Return: {ro.undiscounted_return()} with domain parameters sampled with "
+            f"{normalized_str} probability {prob.numpy()}",
+            "g",
+            bright=True,
+        )
+        prettyprinter.pprint(domain_param)
+        print_cbt(f"", "g", bright=True)
