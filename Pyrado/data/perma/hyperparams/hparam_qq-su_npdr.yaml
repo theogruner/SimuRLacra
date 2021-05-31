@@ -45,13 +45,14 @@ prior_limits:
 # update algo parameters
 algo_hparam:
   max_iter: 5
-  num_sim_per_round: 2000
+  num_sim_per_round: 10
   # simulation_batch_size: 1
-  num_sbi_rounds: 3
+  num_sbi_rounds: 1
   len_segments: 25
   # num_segments: None
   num_workers: 8
   train_initial_policy: False
+  num_eval_samples: 10
 
   subrtn_sbi_training_hparam:
     use_combined_loss: True

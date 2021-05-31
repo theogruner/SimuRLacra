@@ -151,9 +151,13 @@ if __name__ == "__main__":
             env_real = osp.join(pyrado.EVAL_DIR, setting_args["env_hparam"]["rollout_dir"])
 
     elif setting_args["algo_name"] == "npdr":
-        env_real = QQubeSwingUpReal(
-            dt=setting_args["env_hparam"]["dt"], max_steps=setting_args["env_hparam"]["max_steps"]
-        )
+        if setting_args["env_hparam"]["rollout_dir"] is None:
+            env_real = QQubeSwingUpReal(
+                dt=setting_args["env_hparam"]["dt"], max_steps=setting_args["env_hparam"]["max_steps"]
+            )
+        else:
+            # Create the ground truth target domain
+            env_real = osp.join(pyrado.EVAL_DIR, setting_args["env_hparam"]["rollout_dir"])
 
     # ---- Update parameters
     # update domain parameter of simulated environment. This represents a change in the
