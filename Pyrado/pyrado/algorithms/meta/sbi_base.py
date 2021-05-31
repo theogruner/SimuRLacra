@@ -39,6 +39,7 @@ from sbi import utils as utils
 from sbi.inference import NeuralInference
 from sbi.inference.posteriors.direct_posterior import DirectPosterior
 from sbi.utils.user_input_checks import prepare_for_sbi
+from tabulate import tabulate
 from torch.distributions import Distribution, Normal
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
