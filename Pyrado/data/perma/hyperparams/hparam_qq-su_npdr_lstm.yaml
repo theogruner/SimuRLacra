@@ -1,0 +1,63 @@
+env_name: qq-su  # required to load the settings.yaml
+algo_name: npdr  # required to load the settings.yaml
+seed: 0
+
+# comment out the dp_parameter which should not be learned by NPDR
+dp_selection:
+  - Dr
+  - Dp
+  - Rm
+  - km
+  - Mr
+  - Mp
+  - Lr
+  - Lp
+  - g
+#  - V_thold_neg
+#  - V_thold_pos
+  - act_delay
+
+# Define a new nominal value if required. E.g., adapt g assumption if we are on Mars
+# updated_nominals:
+#  Rm: 9.28
+
+# Update prior range for a dp
+prior_range:
+  Rm: 0.6
+  km: 0.6
+  Mr: 0.4
+  Mp: 0.4
+  Lr: 0.3
+  Lp: 0.3
+
+# Update specific prior limits for a dp
+prior_limits:
+  Dr:
+    - 0.
+    - 1.0e-03
+  Dp:
+    - 0.
+    - 1.0e-06
+  act_delay:
+    - 0.
+    - 10.
+
+embedding_name: rnnemb
+embedding_hparam:
+  downsampling_factor: 20
+
+env_hparam:
+  max_steps: 2500
+
+# update algo parameters
+algo_hparam:
+  max_iter: 10
+  num_sim_per_round: 2000
+  num_sbi_rounds: 3
+  len_segments: 25
+  # num_segments: None
+  num_workers: 8
+  train_initial_policy: False
+
+  subrtn_sbi_training_hparam:
+    use_combined_loss: True

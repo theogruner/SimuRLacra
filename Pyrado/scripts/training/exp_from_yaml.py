@@ -215,9 +215,26 @@ if __name__ == "__main__":
 
     # ---- Create Embedding
     # if embedding needs len_rollouts, add it to dict
-    if setting_args["embedding_name"] in [AllStepsEmbedding.name, DeltaStepsEmbedding.name]:
+    if setting_args["embedding_name"] in [AllStepsEmbedding.name,
+                                          DeltaStepsEmbedding.name,
+                                          RNNEmbedding.name]:
         setting_args["embedding_hparam"]["len_rollouts"] = setting_args["env_hparam"]["max_steps"]
+
+    # Load existing LSTM net
+    if setting_args["embedding_name"] == RNNEmbedding.name:
+        # TODO: Currently hard coded NN directory. Move to YAML if LSTM works
+        lstm = pyrado.load("policy.pt", osp.join(pyrado.EXP_DIR, "qq-tspred/lstm/2021-05-31_19-48-32"))
+        setting_args["embedding_hparam"]["recurrent_network_type"] = torch.nn.LSTM
+        setting_args["embedding_hparam"]["hidden_size"] = lstm.rnn_layers.hidden_size
+        setting_args["embedding_hparam"]["num_recurrent_layers"] = lstm.num_recurrent_layers
+        setting_args["embedding_hparam"]["output_size"] = lstm.output_layer.out_features
+
+    # create embedding
     embedding = create_embedding(setting_args["embedding_name"], env_sim.spec, **setting_args["embedding_hparam"])
+
+    # prepare embedding for NPDR
+    if setting_args["embedding_name"] == RNNEmbedding.name:
+        embedding.init_param(init_values=lstm.param_values)
 
     # Define learnable embeddings
     if (
