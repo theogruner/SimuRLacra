@@ -35,6 +35,7 @@ By default (args.iter = -1), the all iterations are evaluated.
 """
 import os.path as osp
 import sys
+from typing import List
 
 import numpy as np
 from dtw import dtw, rabinerJuangStepPattern
@@ -61,6 +62,43 @@ from pyrado.utils.data_types import repeat_interleave
 from pyrado.utils.experiments import load_experiment, load_rollouts_from_dir
 from pyrado.utils.input_output import print_cbt
 from pyrado.utils.math import rmse
+
+
+def compute_metrics(
+    states_real: np.ndarray, states_ml: np.ndarray, states_nom: np.ndarray, num_rollouts_real: int
+) -> List[List[str, float, float, float, float]]:
+    """
+    Compute the DTW and RMSE distance and store it in a table
+
+    :param states_real: numpy array of states from the real system
+    :param states_ml: numpy array of states from the most likely system
+    :param states_nom: numpy array of states from the nominal system
+    :param num_rollouts_real: number of rollouts
+    :return: table formatted for `tabulate()`
+    """
+    # Iterate over all rollouts and compute the performance metrics
+    table = []
+    dtw_config = dict(open_end=True, step_pattern=rabinerJuangStepPattern(6, "c"))
+    dtw_dist_ml_avg, dtw_dist_nom_avg, rmse_ml_avg, rmse_nom_avg = 0, 0, 0, 0
+
+    for idx_r in range(num_rollouts_real):
+        # DTW
+        dtw_dist_ml = dtw(states_real[idx_r], states_ml[idx_r], **dtw_config).distance
+        dtw_dist_nom = dtw(states_real[idx_r], states_nom[idx_r], **dtw_config).distance
+        dtw_dist_ml_avg += dtw_dist_ml / num_rollouts_real
+        dtw_dist_nom_avg += dtw_dist_nom / num_rollouts_real
+
+        # RMSE averaged over the states
+        rmse_ml = np.mean(rmse(states_real[idx_r], states_ml[idx_r], dim=0))
+        rmse_nom = np.mean(rmse(states_real[idx_r], states_nom[idx_r], dim=0))
+        rmse_ml_avg += rmse_ml / num_rollouts_real
+        rmse_nom_avg += rmse_nom / num_rollouts_real
+
+        table.append([idx_r, dtw_dist_ml, dtw_dist_nom, rmse_ml, rmse_nom])
+
+    # Add last row
+    table.append(["average", dtw_dist_ml_avg, dtw_dist_nom_avg, rmse_ml_avg, rmse_nom_avg])
+    return table
 
 
 if __name__ == "__main__":
@@ -263,25 +301,8 @@ if __name__ == "__main__":
     assert states_real.shape == states_nom.shape == states_ml.shape
     assert states_real.shape[0] == num_rollouts_real
 
-    # Iterate over all rollouts and compute the performance metrics
-    table = []
-    dtw_config = dict(open_end=True, step_pattern=rabinerJuangStepPattern(6, "c"))
-    dtw_dist_ml_avg, dtw_dist_nom_avg, rmse_ml_avg, rmse_nom_avg = 0, 0, 0, 0
-    for idx_r in range(num_rollouts_real):
-        # DTW
-        dtw_dist_ml = dtw(states_real[idx_r], states_ml[idx_r], **dtw_config).distance
-        dtw_dist_nom = dtw(states_real[idx_r], states_nom[idx_r], **dtw_config).distance
-        dtw_dist_ml_avg += dtw_dist_ml / num_rollouts_real
-        dtw_dist_nom_avg += dtw_dist_nom / num_rollouts_real
-
-        # RMSE averaged over the states
-        rmse_ml = np.mean(rmse(states_real[idx_r], states_ml[idx_r], dim=0))
-        rmse_nom = np.mean(rmse(states_real[idx_r], states_nom[idx_r], dim=0))
-        rmse_ml_avg += rmse_ml / num_rollouts_real
-        rmse_nom_avg += rmse_nom / num_rollouts_real
-
-        table.append([idx_r, dtw_dist_ml, dtw_dist_nom, rmse_ml, rmse_nom])
-    table.append(["average", dtw_dist_ml_avg, dtw_dist_nom_avg, rmse_ml_avg, rmse_nom_avg])
+    # Compute the DTW and RMSE distance and store it in a table
+    table = compute_metrics(states_real, states_ml, states_nom, num_rollouts_real)
 
     # Print the tabulated data
     headers = ("rollout", "DTW dist. ml", "DTW dist. nom", "mean RMSE ml", "mean RMSE nom")
