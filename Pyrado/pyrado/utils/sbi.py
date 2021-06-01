@@ -39,6 +39,7 @@ from pyrado.sampling.sbi_embeddings import (
     Embedding,
     LastStepEmbedding,
     RNNEmbedding,
+    AllStepsEmbedding,
 )
 from pyrado.sampling.sbi_rollout_sampler import RolloutSamplerForSBI
 from pyrado.sampling.step_sequence import StepSequence
@@ -65,6 +66,8 @@ def create_embedding(name: str, env_spec: EnvSpec, *args, **kwargs) -> Embedding
         embedding = DynamicTimeWarpingEmbedding(env_spec, RolloutSamplerForSBI.get_dim_data(env_spec), *args, **kwargs)
     elif name == RNNEmbedding.name:
         embedding = RNNEmbedding(env_spec, RolloutSamplerForSBI.get_dim_data(env_spec), *args, **kwargs)
+    elif name == AllStepsEmbedding.name:
+        embedding = AllStepsEmbedding(env_spec, RolloutSamplerForSBI.get_dim_data(env_spec), *args, **kwargs)
     else:
         raise pyrado.ValueErr(
             given_name=name,

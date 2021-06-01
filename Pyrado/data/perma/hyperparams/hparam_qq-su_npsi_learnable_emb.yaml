@@ -1,5 +1,5 @@
 env_name: qq-su  # required to load the settings.yaml
-algo_name: npdr  # required to load the settings.yaml
+algo_name: npsi  # required to load the settings.yaml
 seed: 0
 
 # comment out the dp_parameter which should not be learned by NPDR
@@ -43,18 +43,27 @@ prior_limits:
     - 10.
 
 env_hparam:
+  dt: 0.004
   max_steps: 2500
+  rollout_dir: "qq-su_ectrl_250Hz_10s"
+
+embedding_name: asemb # as default the `BayessimEmbedding` is set
+embedding_hparam:
+  downsampling_factor: 20
 
 # update algo parameters
 algo_hparam:
-  max_iter: 10
-  num_sim_per_round: 2000
-  # simulation_batch_size: 1
+  max_iter: 1
+  num_sim_per_round: 10
+  num_eval_samples: 1
   num_sbi_rounds: 3
   len_segments: 25
   # num_segments: None
   num_workers: 8
   train_initial_policy: False
+
+  posterior_hparam:
+    embedding_size: 200
 
   subrtn_sbi_training_hparam:
     use_combined_loss: True

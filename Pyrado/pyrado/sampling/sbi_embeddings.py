@@ -599,3 +599,74 @@ class DynamicTimeWarpingEmbedding(Embedding):
         ]
 
         return to.as_tensor(alignment, dtype=to.get_default_dtype()).view(-1)
+
+class AllStepsEmbedding(Embedding):
+    """
+    Embedding for simulation-based inference with time series data which computes the same features of the rollouts
+    states and actions as done in [1]
+
+    [1] F. Ramos, R.C. Possas, D. Fox, "BayesSim: adaptive domain randomization via probabilistic inference for
+        robotics simulators", RSS, 2019
+    """
+
+    name: str = "asemb"
+    requires_target_domain_data: bool = False
+
+    def __init__(
+        self,
+        spec: EnvSpec,
+        dim_data: int,
+        len_rollouts: int,
+        downsampling_factor: int = 1,
+        idcs_data: Optional[Union[Tuple[int], List[int]]] = None,
+        use_cuda: bool = False,
+    ):
+        """
+        Constructor
+
+        :param spec: environment specification
+        :param dim_data: number of dimensions of one data sample, i.e. one time step. By default, this is the sum of the
+                         state and action spaces' flat dimensions. This number is doubled if the embedding
+                         target domain data.
+        :param len_rollouts: number of time steps per rollout without considering a potential downsampling later
+                             (must be the same for all rollouts)
+        :param downsampling_factor: skip evey `downsampling_factor` time series sample, the downsampling is done in the
+                                    base class before calling `summary_statistic()`
+        :param idcs_data: list or tuple of integers to select specific states from the data (always using all actions),
+                          by default `None` to select all states
+        :param use_cuda: `True` to move the policy to the GPU, `False` (default) to use the CPU
+        """
+        if not isinstance(len_rollouts, int) or len_rollouts < 0:
+            raise pyrado.ValueErr(given=len_rollouts, eq_constraint="1 (int)")
+
+        super().__init__(spec, dim_data, downsampling_factor, idcs_data, use_cuda)
+
+        self._len_rollouts = len_rollouts // downsampling_factor
+        self.to(self.device)
+
+    @property
+    def dim_output(self) -> int:
+        if self._idcs_data is not None:
+            return len(self._idcs_data) * (self._len_rollouts // self.downsampling_factor + 1)
+        else:
+            return self._env_spec.state_space.flat_dim * self._len_rollouts
+
+    @to.no_grad()
+    def summary_statistic(self, data: to.Tensor) -> to.Tensor:
+        """
+        Returns the full states of the rollout as a vector i.e.
+            the time-steps and state dimension are flattend into one dimension.
+
+        :param data: states and actions of a rollout or segment to be transformed for inference
+        :return: all states as a flattened vector
+        """
+        if data.shape[0] < 2:
+            raise pyrado.ShapeErr(msg="The data tensor needs to contain at least two samples!")
+
+        # Extract the states, and compute the deltas
+        if self._idcs_data is not None:
+            states = data[:, self._idcs_data]
+        else:
+            states = data[:, : self._env_spec.state_space.flat_dim]
+
+        return states.reshape(-1)

@@ -35,6 +35,7 @@ from copy import deepcopy
 from shutil import copyfile
 
 import torch as to
+import torch.nn
 import yaml
 from sbi import utils
 from sbi.inference import SNPE_C
@@ -57,6 +58,7 @@ from pyrado.sampling.sbi_embeddings import (
     DynamicTimeWarpingEmbedding,
     LastStepEmbedding,
     RNNEmbedding,
+    AllStepsEmbedding,
 )
 from pyrado.sampling.sbi_rollout_sampler import RolloutSamplerForSBI
 from pyrado.utils.argparser import get_argparser
@@ -187,7 +189,7 @@ if __name__ == "__main__":
     ex_dir = setup_experiment(
         setting_args["env_name"],
         f"{NPDR.name}_{setting_args['policy_name']}",
-        "sim2sim",
+        f"{setting_args['algo_name']}",
     )
     # Set seed if desired
     pyrado.set_seed(setting_args["seed"], verbose=True)
@@ -210,8 +212,20 @@ if __name__ == "__main__":
 
     # define prior
     prior = utils.BoxUniform(**prior_bounds)
-    # Time series embedding
+
+    # ---- Create Embedding
+    # if embedding needs len_rollouts, add it to dict
+    if setting_args["embedding_name"] in [AllStepsEmbedding.name, DeltaStepsEmbedding.name]:
+        setting_args["embedding_hparam"]["len_rollouts"] = setting_args["env_hparam"]["max_steps"]
     embedding = create_embedding(setting_args["embedding_name"], env_sim.spec, **setting_args["embedding_hparam"])
+
+    # Define learnable embeddings
+    if "embedding_size" in setting_args["algo_hparam"]["posterior_hparam"]:
+        # setting_ars["algo_hparam"]["posterior_hparam"].pop("embedding_size")
+        embedding_net = torch.nn.Linear(
+            embedding.dim_output, setting_ars["algo_hparam"]["posterior_hparam"]["embedding_size"]
+        )
+        setting_args["algo_hparam"]["posterior_hparam"]["embedding_net"] = embedding_net
 
     # define sbi subroutine. Choose between SNPE-A and SNPE-C
     if setting_args["sbi_subrtn_name"] == "SNPE-A":
