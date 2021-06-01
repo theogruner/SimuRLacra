@@ -23,6 +23,7 @@ policy_hparam:
 embedding_name: bsemb # as default the `BayessimEmbedding` is set
 embedding_hparam:
   downsampling_factor: 20
+  idcs_data:
   # len_rollouts: 2500
 
 # ground truth domain-parameters which emulate the parameters of a real environment

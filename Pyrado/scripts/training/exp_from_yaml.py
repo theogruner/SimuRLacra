@@ -220,7 +220,10 @@ if __name__ == "__main__":
     embedding = create_embedding(setting_args["embedding_name"], env_sim.spec, **setting_args["embedding_hparam"])
 
     # Define learnable embeddings
-    if "embedding_size" in hparam_args["algo_hparam"]["posterior_hparam"]:
+    if (
+        "posterior_hparam" in hparam_args["algo_hparam"]
+        and "embedding_size" in hparam_args["algo_hparam"]["posterior_hparam"]
+    ):
         # setting_ars["algo_hparam"]["posterior_hparam"].pop("embedding_size")
         embedding_net = torch.nn.Linear(
             embedding.dim_output * setting_args["algo_hparam"]["num_real_rollouts"],
