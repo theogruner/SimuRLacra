@@ -33,13 +33,13 @@ import numpy as np
 
 import pyrado
 from pyrado.sampling.sbi_embeddings import (
+    AllStepsEmbedding,
     BayesSimEmbedding,
     DeltaStepsEmbedding,
     DynamicTimeWarpingEmbedding,
     Embedding,
     LastStepEmbedding,
     RNNEmbedding,
-    AllStepsEmbedding,
 )
 from pyrado.sampling.sbi_rollout_sampler import RolloutSamplerForSBI
 from pyrado.sampling.step_sequence import StepSequence

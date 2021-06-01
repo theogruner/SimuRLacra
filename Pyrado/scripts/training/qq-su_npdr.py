@@ -44,7 +44,7 @@ from pyrado.logger.experiment import save_dicts_to_yaml, setup_experiment
 from pyrado.policies.feed_forward.dummy import DummyPolicy
 from pyrado.policies.feed_forward.time import TimePolicy
 from pyrado.policies.special.environment_specific import QQubeSwingUpAndBalanceCtrl
-from pyrado.sampling.sbi_embeddings import BayesSimEmbedding, RNNEmbedding, DeltaStepsEmbedding
+from pyrado.sampling.sbi_embeddings import BayesSimEmbedding, DeltaStepsEmbedding, RNNEmbedding
 from pyrado.utils.argparser import get_argparser
 from pyrado.utils.sbi import create_embedding
 

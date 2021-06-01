@@ -53,12 +53,12 @@ from pyrado.environments.quanser.quanser_qube import QQubeSwingUpReal
 from pyrado.logger.experiment import load_dict_from_yaml, save_dicts_to_yaml, setup_experiment
 from pyrado.policies.special.environment_specific import QQubeSwingUpAndBalanceCtrl
 from pyrado.sampling.sbi_embeddings import (
+    AllStepsEmbedding,
     BayesSimEmbedding,
     DeltaStepsEmbedding,
     DynamicTimeWarpingEmbedding,
     LastStepEmbedding,
     RNNEmbedding,
-    AllStepsEmbedding,
 )
 from pyrado.sampling.sbi_rollout_sampler import RolloutSamplerForSBI
 from pyrado.utils.argparser import get_argparser
@@ -215,9 +215,7 @@ if __name__ == "__main__":
 
     # ---- Create Embedding
     # if embedding needs len_rollouts, add it to dict
-    if setting_args["embedding_name"] in [AllStepsEmbedding.name,
-                                          DeltaStepsEmbedding.name,
-                                          RNNEmbedding.name]:
+    if setting_args["embedding_name"] in [AllStepsEmbedding.name, DeltaStepsEmbedding.name, RNNEmbedding.name]:
         setting_args["embedding_hparam"]["len_rollouts"] = setting_args["env_hparam"]["max_steps"]
 
     # Load existing LSTM net

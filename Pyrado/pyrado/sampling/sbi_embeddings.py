@@ -505,8 +505,9 @@ class RNNEmbedding(Embedding):
         # Reshape the data to match the shape desired by PyTorch
         data = data.unsqueeze(1)  # shape [len_time_series, 1, dim_data]
 
-        # Pass the input through hidden RNN layers, select the last output, and pass that through the output layer
-        out, _ = self.rnn_layers(data, None)
+        # Pass the input through hidden RNN layers, select the last output, and pass that through the output layer.
+        # We always let the NN initialize its hidden states by passing None.
+        out, _ = self.rnn_layers(data, hidden=None)
 
         if self._len_rollouts is None:
             # Only use the output of the last time step
@@ -599,6 +600,7 @@ class DynamicTimeWarpingEmbedding(Embedding):
         ]
 
         return to.as_tensor(alignment, dtype=to.get_default_dtype()).view(-1)
+
 
 class AllStepsEmbedding(Embedding):
     """
