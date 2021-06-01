@@ -641,13 +641,13 @@ class AllStepsEmbedding(Embedding):
 
         super().__init__(spec, dim_data, downsampling_factor, idcs_data, use_cuda)
 
-        self._len_rollouts = len_rollouts // downsampling_factor
+        self._len_rollouts = len_rollouts // downsampling_factor + 1
         self.to(self.device)
 
     @property
     def dim_output(self) -> int:
         if self._idcs_data is not None:
-            return len(self._idcs_data) * (self._len_rollouts // self.downsampling_factor + 1)
+            return len(self._idcs_data) * self._len_rollouts
         else:
             return self._env_spec.state_space.flat_dim * self._len_rollouts
 

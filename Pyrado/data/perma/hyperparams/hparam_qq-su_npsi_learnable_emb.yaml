@@ -44,8 +44,8 @@ prior_limits:
 
 env_hparam:
   dt: 0.004
-  max_steps: 2500
-  rollout_dir: "qq-su_ectrl_250Hz_10s"
+  max_steps: 1750
+  rollout_dir: "qq-su_ectrl_250Hz_7s"
 
 embedding_name: asemb # as default the `BayessimEmbedding` is set
 embedding_hparam:
@@ -54,7 +54,7 @@ embedding_hparam:
 # update algo parameters
 algo_hparam:
   max_iter: 1
-  num_sim_per_round: 10
+  num_sim_per_round: 5000
   num_eval_samples: 1
   num_sbi_rounds: 3
   len_segments: 25
