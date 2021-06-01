@@ -44,7 +44,7 @@ from pyrado.logger.experiment import save_dicts_to_yaml, setup_experiment
 from pyrado.policies.feed_forward.dummy import DummyPolicy
 from pyrado.policies.feed_forward.time import TimePolicy
 from pyrado.policies.special.environment_specific import QQubeSwingUpAndBalanceCtrl
-from pyrado.sampling.sbi_embeddings import BayesSimEmbedding, RNNEmbedding
+from pyrado.sampling.sbi_embeddings import BayesSimEmbedding, RNNEmbedding, DeltaStepsEmbedding
 from pyrado.utils.argparser import get_argparser
 from pyrado.utils.sbi import create_embedding
 
@@ -189,7 +189,7 @@ if __name__ == "__main__":
     algo_hparam = dict(
         max_iter=1,
         num_real_rollouts=1,
-        num_sim_per_round=2000,
+        num_sim_per_round=3000,
         num_sbi_rounds=3,
         simulation_batch_size=10,
         normalize_posterior=False,
@@ -211,7 +211,7 @@ if __name__ == "__main__":
             # max_num_epochs=5,  # only use for debugging
         ),
         subrtn_sbi_sampling_hparam=dict(sample_with_mcmc=True),
-        num_workers=20,
+        num_workers=12,
     )
     algo = NPDR(
         ex_dir,
