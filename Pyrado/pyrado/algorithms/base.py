@@ -342,6 +342,12 @@ class Algorithm(ABC, LoggerAware):
         :param meta_info: is not `None` if this algorithm is run as a subroutine of a meta-algorithm,
                           contains a dict of information about the current iteration of the meta-algorithm
         """
+        import sys
+
+        for var, obj in self.__dict__.items():
+            if sys.getsizeof(obj) > 1000:
+                print(var, sys.getsizeof(obj))
+
         joblib.dump(self, osp.join(self.save_dir, f"{self._save_name}.pkl"))
 
     @staticmethod
