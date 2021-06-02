@@ -62,25 +62,26 @@ from pyrado.utils.input_output import print_cbt
 from pyrado.utils.math import rmse
 
 
-def compute_metrics(
+def compute_traj_distance_metrics(
     states_real: np.ndarray,
     states_ml: np.ndarray,
     states_nom: np.ndarray,
     num_rollouts_real: int,
+    normalize: bool = True,
     dtw_config: Optional[dict] = None,
     save: bool = True,
-) -> List[List[Tuple[str, float, float, float, float]]]:
+):
     """
-    Compute the DTW and RMSE distance and store it in a table
+    Compute the DTW distance and the RMSE for 2 trajectories w.r.t. a ground truth trajectory, and store it in a table.
 
     :param states_real: numpy array of states from the real system of shape [num_rollouts, len_time_series, dim_state]
     :param states_ml: numpy array of states from the most likely system [num_rollouts, len_time_series, dim_state]
     :param states_nom: numpy array of states from the nominal system [num_rollouts, len_time_series, dim_state]
     :param num_rollouts_real: number of rollouts
+    :param normalize: it `True`, normalize all trajectories to [-1, 1] for each dimension before computing the metrics
     :param dtw_config: dictionary with options for the `dtw.dtw()` command, e.g.
                        `dict(step_pattern=dtw.rabinerJuangStepPattern(6, "c"))`
     :param save: it `True`, save table as tex-file
-    :return: table formatted for `tabulate()`
     """
     # Configure the metric computations
     default_dtw_config = dict(open_end=True, step_pattern="symmetric2", distance_only=True)
@@ -90,14 +91,15 @@ def compute_metrics(
     table = []
     dtw_dist_ml_avg, dtw_dist_nom_avg, rmse_ml_avg, rmse_nom_avg = 0, 0, 0, 0
     for idx_r in range(num_rollouts_real):
-        # Normalize all trajectories to [-1, 1] for each dimension
-        max_abs_state = np.max(
-            np.concatenate([np.abs(states_real[idx_r]), np.abs(states_ml[idx_r]), np.abs(states_nom[idx_r])], axis=0),
-            axis=0,
-        )
-        states_real[idx_r] /= max_abs_state
-        states_ml[idx_r] /= max_abs_state
-        states_nom[idx_r] /= max_abs_state
+        if normalize:
+            # Normalize all trajectories to [-1, 1] for each dimension
+            max_abs_state = np.max(
+                np.concatenate([np.abs(states_real[idx_r]), np.abs(states_ml[idx_r]), np.abs(states_nom[idx_r])], axis=0),
+                axis=0,
+            )
+            states_real[idx_r] /= max_abs_state
+            states_ml[idx_r] /= max_abs_state
+            states_nom[idx_r] /= max_abs_state
 
         # DTW
         dtw_dist_ml = dtw.dtw(states_real[idx_r], states_ml[idx_r], **dtw_config).distance
@@ -335,7 +337,7 @@ if __name__ == "__main__":
     assert states_real.shape[0] == num_rollouts_real
 
     # Compute the DTW and RMSE distance and store it in a table
-    table = compute_metrics(states_real, states_ml, states_nom, num_rollouts_real)
+    table = compute_traj_distance_metrics(states_real, states_ml, states_nom, num_rollouts_real)
 
     # Plot
     plot_rollouts_segment_wise(
