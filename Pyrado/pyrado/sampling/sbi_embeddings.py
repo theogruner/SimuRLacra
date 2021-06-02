@@ -507,7 +507,7 @@ class RNNEmbedding(Embedding):
 
         # Pass the input through hidden RNN layers, select the last output, and pass that through the output layer.
         # We always let the NN initialize its hidden states by passing None.
-        out, _ = self.rnn_layers(data, hidden=None)
+        out, _ = self.rnn_layers(data, None)
 
         if self._len_rollouts is None:
             # Only use the output of the last time step
