@@ -35,7 +35,7 @@ By default (args.iter = -1), the all iterations are evaluated.
 """
 import os.path as osp
 import sys
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 from dtw import dtw, rabinerJuangStepPattern
@@ -66,7 +66,7 @@ from pyrado.utils.math import rmse
 
 def compute_metrics(
     states_real: np.ndarray, states_ml: np.ndarray, states_nom: np.ndarray, num_rollouts_real: int
-) -> List[List[str, float, float, float, float]]:
+) -> List[List[Tuple[str, float, float, float, float]]]:
     """
     Compute the DTW and RMSE distance and store it in a table
 
@@ -82,6 +82,16 @@ def compute_metrics(
     dtw_dist_ml_avg, dtw_dist_nom_avg, rmse_ml_avg, rmse_nom_avg = 0, 0, 0, 0
 
     for idx_r in range(num_rollouts_real):
+        # Normalize all trajectories by the global maximum for each dimension
+        max_abs_state = np.max(np.concatenate([np.abs(states_real), np.abs(states_ml), np.abs(states_nom)], axis=0), axis=1)
+        assert max_abs_state.shape == states_ml.shape
+        states_real /= max_abs_state
+        states_ml /= max_abs_state
+        states_nom /= max_abs_state
+        assert np.all(np.max(states_real) < 1)
+        assert np.all(np.max(states_ml) < 1)
+        assert np.all(np.max(states_nom) < 1)
+
         # DTW
         dtw_dist_ml = dtw(states_real[idx_r], states_ml[idx_r], **dtw_config).distance
         dtw_dist_nom = dtw(states_real[idx_r], states_nom[idx_r], **dtw_config).distance
