@@ -189,11 +189,11 @@ if __name__ == "__main__":
     algo_hparam = dict(
         max_iter=1,
         num_real_rollouts=1,
-        num_sim_per_round=300,
+        num_sim_per_round=500,
         num_sbi_rounds=3,
         simulation_batch_size=10,
         normalize_posterior=False,
-        num_eval_samples=10,
+        num_eval_samples=2,
         num_segments=args.num_segments,
         len_segments=args.len_segments,
         use_rec_act=use_rec_act,
@@ -208,10 +208,10 @@ if __name__ == "__main__":
             use_combined_loss=True,  # default: False
             retrain_from_scratch_each_round=False,  # default: False
             show_train_summary=False,  # default: False
-            max_num_epochs=5,  # only use for debugging
+            # max_num_epochs=5,  # only use for debugging
         ),
         subrtn_sbi_sampling_hparam=dict(sample_with_mcmc=True),
-        num_workers=4,
+        num_workers=20,
     )
     algo = NPDR(
         ex_dir,

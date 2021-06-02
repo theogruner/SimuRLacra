@@ -345,7 +345,7 @@ class Algorithm(ABC, LoggerAware):
         import sys
 
         for var, obj in self.__dict__.items():
-            if sys.getsizeof(obj) > 1000:
+            if sys.getsizeof(obj) > 100:
                 print(var, sys.getsizeof(obj))
 
         joblib.dump(self, osp.join(self.save_dir, f"{self._save_name}.pkl"))
