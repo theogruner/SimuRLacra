@@ -27,7 +27,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 from copy import deepcopy
-from typing import Sequence, Tuple
+from typing import List, Sequence, Tuple, Union
 
 import numpy as np
 import torch as to
@@ -36,6 +36,7 @@ from torch.distributions.kl import kl_divergence
 
 import pyrado
 from pyrado.algorithms.base import Algorithm
+from pyrado.algorithms.step_based.a2c import A2C
 from pyrado.algorithms.step_based.gae import GAE, ValueFunctionSpace
 from pyrado.algorithms.utils import compute_action_statistics
 from pyrado.environments.base import Env
@@ -46,57 +47,6 @@ from pyrado.policies.feed_back.fnn import FNNPolicy
 from pyrado.sampling.parallel_rollout_sampler import ParallelRolloutSampler
 from pyrado.sampling.step_sequence import StepSequence
 from pyrado.utils.data_types import EnvSpec
-
-
-class SVPGParticle(Policy):
-    """
-    An actor-critic particle of type `Policy`.
-    Particles' parameters are considered to be part of the parameter distribution optimized by the SVPG algorithm.
-    """
-
-    def __init__(self, spec: EnvSpec, actor: Policy, critic: GAE, use_cuda: bool = False):
-        """
-        Constructor
-
-        :param spec: specification of the environment the particle should act in
-        :param actor: policy
-        :param critic: advantage function estimator
-        :param use_cuda: `True` to move the policy to the GPU, `False` (default) to use the CPU
-        """
-
-        # Call Policy's constructor
-        super().__init__(spec, use_cuda)
-
-        # Create actor and critic
-        self.actor = actor
-        self.critic = critic
-
-    def init_param(self, init_values: to.Tensor = None, **kwargs):
-        """
-        Initializes the parameters of the actor and critic networks with given values.
-
-        :param init_values: the initial values for the actor and critic networks
-        """
-        self.actor.init_param(init_values, **kwargs)
-        self.critic.vfcn.init_param(init_values, **kwargs)
-
-    def value(self, obs: to.Tensor) -> to.Tensor:
-        """
-        Predict the value of a given observation. Forwards to the critic head.
-
-        :param obs: the observation
-        :return: the predicted value
-        """
-        return self.critic.values(obs)
-
-    def forward(self, obs: to.Tensor) -> to.Tensor:
-        """
-        Get the action given an observation. Forwards to the actor head.
-
-        :param obs: the observation
-        :return: the action
-        """
-        return self.actor(obs)
 
 
 class SVPG(Algorithm):
@@ -163,7 +113,7 @@ class SVPG(Algorithm):
         self.serial = serial
 
         # Prepare placeholders for particles
-        self.particles = [None] * num_particles
+        self.particles: List[Union[A2C, None]] = [None] * num_particles
         self.particleSteps = [None] * num_particles
         self.expl_strats = [None] * num_particles
         self.optimizers = [None] * num_particles
@@ -178,7 +128,7 @@ class SVPG(Algorithm):
             vfcn = FNNPolicy(spec=EnvSpec(env.obs_space, ValueFunctionSpace), **particle_hparam["vfcn"])
             critic = GAE(vfcn, **particle_hparam["critic"])
             self.register_as_logger_parent(critic)
-            particle = SVPGParticle(env.spec, actor, critic)
+            particle = A2C(save_dir, env, actor, critic, max_iter)
             self.particles[i] = particle
             self.particles[i].init_param()
             self.expl_strats[i] = NormalActNoiseExplStrat(self.particles[i].actor, std_init)
@@ -187,10 +137,9 @@ class SVPG(Algorithm):
             self.fixed_expl_strats[i] = self.expl_strats[i]
             self.particleSteps[i] = 0
 
-            if self.serial:
-                self.samplers[i] = ParallelRolloutSampler(
-                    env, self.expl_strats[i], num_workers, min_rollouts=min_rollouts, min_steps=min_steps
-                )
+            self.samplers[i] = ParallelRolloutSampler(
+                env, self.expl_strats[i], num_workers, min_rollouts=min_rollouts, min_steps=min_steps
+            )
 
     def step(self, snapshot_mode: str, meta_info: dict = None):
         # Serial flag must not be set when interacting through step and reset

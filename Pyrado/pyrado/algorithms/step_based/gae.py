@@ -58,7 +58,7 @@ class GAE(LoggerAware, nn.Module):
 
     def __init__(
         self,
-        vfcn: [nn.Module, Policy],
+        vfcn: Union[nn.Module, Policy],
         gamma: float = 0.99,
         lamda: float = 0.95,
         num_epoch: int = 10,
