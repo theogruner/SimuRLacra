@@ -26,7 +26,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from typing import Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 import torch as to
@@ -445,7 +445,7 @@ class RewardGenerator:
         reward_multiplier: float,
         lr: float = 3e-3,
         logger: StepLogger = None,
-        network_hparams={},
+        network_hparams=dict(),
         device: str = "cuda" if to.cuda.is_available() else "cpu",
     ):
 
@@ -466,9 +466,8 @@ class RewardGenerator:
             obs_space=BoxSpace.cat([env_spec.obs_space, env_spec.obs_space, env_spec.act_space]),
             act_space=BoxSpace(bound_lo=[0], bound_up=[1]),
         )
-        self.network_hparams = {"num_recurrent_layers": 4, "hidden_size": 32, "oytput_nonlin": to.relu}
+        self.network_hparams: Dict[str, Any] = {"num_recurrent_layers": 4, "hidden_size": 32, "oytput_nonlin": to.relu}
         self.network_hparams |= network_hparams
-        network_hparams
         self.discriminator = GRUPolicy(spec=spec, **self.network_hparams)
         self.loss_fcn = nn.BCELoss()
         self.optimizer = to.optim.Adam(self.discriminator.parameters(), lr=lr, eps=1e-5)
