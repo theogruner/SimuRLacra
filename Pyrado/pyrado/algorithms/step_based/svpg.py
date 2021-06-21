@@ -173,20 +173,18 @@ class SVPG(Algorithm):
         self.count = 0
         self.update_count = 0
 
-        # Particle factory
-        actor = FNNPolicy(spec=env.spec, **particle_hparam["actor"])
-        vfcn = FNNPolicy(spec=EnvSpec(env.obs_space, ValueFunctionSpace), **particle_hparam["vfcn"])
-        critic = GAE(vfcn, **particle_hparam["critic"])
-        self.register_as_logger_parent(critic)
-        particle = SVPGParticle(env.spec, actor, critic)
-
         for i in range(self.num_particles):
-            self.particles[i] = deepcopy(particle)
+            actor = FNNPolicy(spec=env.spec, **particle_hparam["actor"])
+            vfcn = FNNPolicy(spec=EnvSpec(env.obs_space, ValueFunctionSpace), **particle_hparam["vfcn"])
+            critic = GAE(vfcn, **particle_hparam["critic"])
+            self.register_as_logger_parent(critic)
+            particle = SVPGParticle(env.spec, actor, critic)
+            self.particles[i] = particle
             self.particles[i].init_param()
             self.expl_strats[i] = NormalActNoiseExplStrat(self.particles[i].actor, std_init)
             self.optimizers[i] = to.optim.Adam(self.expl_strats[i].parameters(), lr=self.lr)
-            self.fixed_particles[i] = deepcopy(self.particles[i])
-            self.fixed_expl_strats[i] = deepcopy(self.expl_strats[i])
+            self.fixed_particles[i] = self.particles[i]
+            self.fixed_expl_strats[i] = self.expl_strats[i]
             self.particleSteps[i] = 0
 
             if self.serial:
@@ -234,7 +232,6 @@ class SVPG(Algorithm):
         self.logger.add_value("avg return", np.mean(avg_rets_all_prtcls), 4)
         self.logger.add_value("median return", np.median(median_rets_all_prtcls), 4)
         self.logger.add_value("std return", np.mean(std_rets_all_prtcls), 4)
-        self.logger.record_step()  # TODO @Robin necessary?
 
         # Save snapshot data
         self.make_snapshot(snapshot_mode, float(np.mean(avg_rets_all_prtcls)), meta_info)
@@ -242,7 +239,7 @@ class SVPG(Algorithm):
         # Update the particles
         self.update(ros_all_particles)
 
-    def kernel(self, X: to.Tensor) -> (to.Tensor, to.Tensor):
+    def kernel(self, X: to.Tensor) -> Tuple[to.Tensor, to.Tensor]:
         """
         Compute the RBF-kernel and the corresponding derivatives.
 
@@ -251,22 +248,23 @@ class SVPG(Algorithm):
         """
         X_np = X.cpu().data.numpy()  # use numpy because torch median is flawed
         pairwise_dists = squareform(pdist(X_np)) ** 2
+        assert pairwise_dists.shape[0] == self.num_particles
 
         # Median trick
         h = np.median(pairwise_dists)
         h = np.sqrt(0.5 * h / np.log(self.num_particles + 1))
 
         # Compute RBF Kernel
-        Kxx = to.exp(-to.from_numpy(pairwise_dists).to(to.get_default_dtype()) / h ** 2 / 2)
+        kernel = to.exp(-to.from_numpy(pairwise_dists).to(to.get_default_dtype()) / h ** 2 / 2)
 
         # Compute kernel gradient
-        dx_Kxx = -(Kxx).matmul(X)
-        sum_Kxx = Kxx.sum(1)
+        grads = -kernel.matmul(X)
+        kernel_sum = kernel.sum(1)
         for i in range(X.shape[1]):
-            dx_Kxx[:, i] = dx_Kxx[:, i] + X[:, i].matmul(sum_Kxx)
-        dx_Kxx /= h ** 2
+            grads[:, i] = grads[:, i] + X[:, i].matmul(kernel_sum)
+        grads /= h ** 2
 
-        return Kxx, dx_Kxx
+        return kernel, grads
 
     def update(self, rollouts: Sequence[StepSequence]):
         r"""
