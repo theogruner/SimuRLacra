@@ -27,6 +27,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 from copy import deepcopy
+from queue import Queue
 from typing import List, Sequence, Tuple, Union
 
 import numpy as np
@@ -126,9 +127,15 @@ class SVPG(Algorithm):
         class OptimizerHook:
             def __init__(self, optim):
                 self.optim = optim
+                self.buffer = Queue()
+
+            def real_step(self):
+                while not self.buffer.empty():
+                    args, kwargs = self.buffer.get()
+                    self.optim.step(*args, **kwargs)
 
             def step(self, *args, **kwargs):
-                self.optim.step(*args, **kwargs)
+                self.buffer.put((args, kwargs))
                 print("OPTIM!")
 
             def zero_grad(self, *args, **kwargs):
