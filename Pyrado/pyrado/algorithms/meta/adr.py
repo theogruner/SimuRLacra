@@ -448,9 +448,8 @@ class RewardGenerator:
         network_hparams=dict(),
         device: str = "cuda" if to.cuda.is_available() else "cpu",
     ):
-
         """
-        Constructor
+        Construct
 
         :param env_spec: environment specification
         :param batch_size: batch size for each update step
@@ -474,6 +473,12 @@ class RewardGenerator:
         self.logger = logger
 
     def get_reward(self, traj: StepSequence):
+        """Calculate the reward based on a particles trajectory.
+
+        :param traj: The trajectory to evaluate
+
+        :return: Score
+        """
         traj = preprocess_rollout(traj)
         with to.no_grad():
             reward = self.discriminator.forward(traj).cpu()
@@ -512,7 +517,7 @@ class RewardGenerator:
 
 def preprocess_rollout(rollout: StepSequence) -> StepSequence:
     """
-    Extracts observations and actions from a `StepSequence` and packs them into a PyTorch tensor which can be fed
+    Extract observations and actions from a `StepSequence` and pack them into a PyTorch tensor which can be fed
     through a network.
 
     :param rollout: a `StepSequence` instance containing a trajectory
