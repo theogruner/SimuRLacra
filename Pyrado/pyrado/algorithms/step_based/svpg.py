@@ -114,79 +114,43 @@ class SVPG(Algorithm):
 
         # Prepare placeholders for particles
         self.particles: List[Union[A2C, None]] = [None] * num_particles
-        self.particleSteps = [None] * num_particles
+        self.particleSteps = [0] * num_particles
         self.expl_strats = [None] * num_particles
         self.optimizers = [None] * num_particles
-        self.fixed_particles = [None] * num_particles
+        self.fixed_particles: List[Union[A2C, None]] = [None] * num_particles
         self.fixed_expl_strats = [None] * num_particles
         self.samplers = [None] * num_particles
         self.count = 0
         self.update_count = 0
+
+        class OptimizerHook:
+            def __init__(self, optim):
+                self.optim = optim
+
+            def step(self, *args, **kwargs):
+                self.optim.step(*args, **kwargs)
+                print("OPTIM!")
+
+            def zero_grad(self, *args, **kwargs):
+                self.optim.zero_grad(*args, **kwargs)
 
         for i in range(self.num_particles):
             actor = FNNPolicy(spec=env.spec, **particle_hparam["actor"])
             vfcn = FNNPolicy(spec=EnvSpec(env.obs_space, ValueFunctionSpace), **particle_hparam["vfcn"])
             critic = GAE(vfcn, **particle_hparam["critic"])
             self.register_as_logger_parent(critic)
-            particle = A2C(save_dir, env, actor, critic, max_iter)
-            self.particles[i] = particle
-            self.particles[i].init_param()
-            self.expl_strats[i] = NormalActNoiseExplStrat(self.particles[i].actor, std_init)
-            self.optimizers[i] = to.optim.Adam(self.expl_strats[i].parameters(), lr=self.lr)
-            self.fixed_particles[i] = self.particles[i]
+            self.particles[i] = A2C(save_dir, env, actor, critic, max_iter, min_steps=min_steps)
+            self.fixed_particles[i] = A2C(save_dir, env, actor, critic, max_iter, min_steps=min_steps)
             self.fixed_expl_strats[i] = self.expl_strats[i]
             self.particleSteps[i] = 0
-
-            self.samplers[i] = ParallelRolloutSampler(
-                env, self.expl_strats[i], num_workers, min_rollouts=min_rollouts, min_steps=min_steps
-            )
+            self.particles[i].optim = OptimizerHook(self.particles[i].optim)
 
     def step(self, snapshot_mode: str, meta_info: dict = None):
-        # Serial flag must not be set when interacting through step and reset
-        if not self.serial:
-            raise NotImplementedError("Step cannot be called if serial flag is False!")
-
-        self.count += 1
-        ros_all_particles, rets_all_particles = [], []
         for i in range(self.num_particles):
-            ros_one_particle = self.samplers[i].sample()
-            # ro_concat = StepSequence.concat(ros_one_particle)
-            # ro_concat.torch(data_type=to.get_default_dtype())
-            ros_all_particles.append(ros_one_particle)
-            rets_all_particles.append(np.array([ro.undiscounted_return() for ro in ros_one_particle]))
-            self.particleSteps[i] = +1
-            if self.horizon != 0 and (self.particleSteps[i] > self.horizon):
-                self.particles[i].init_param()
-                self.particleSteps[i] = 0
-
-        # Log metrics computed from the old policy (before the update)
-        num_ros_all_prtcls = np.array([len(p) for p in ros_all_particles])
-        avg_len_ros_all_prtcls = np.array([np.mean([ro.length for ro in p]) for p in ros_all_particles])
-        self._cnt_samples += sum([ro.length for p in ros_all_particles for ro in p])
-        avg_rets_all_prtcls = np.array([np.mean(p) for p in rets_all_particles])
-        median_rets_all_prtcls = np.array([np.median(p) for p in rets_all_particles])
-        max_rets_all_prtcls = np.array([np.max(p) for p in rets_all_particles])
-        std_rets_all_prtcls = np.array([np.std(p) for p in rets_all_particles])
-        avg_explstrat_stds = np.array([to.mean(e.noise.std.data).item() for e in self.expl_strats])
-        self.logger.add_value("max return pp", max_rets_all_prtcls, 2)
-        self.logger.add_value("avg return pp", avg_rets_all_prtcls, 2)
-        self.logger.add_value("median return pp", median_rets_all_prtcls, 2)
-        self.logger.add_value("std return pp", std_rets_all_prtcls, 2)
-        self.logger.add_value("avg expl strat stds pp", avg_explstrat_stds, 2)
-        self.logger.add_value("avg rollout len pp", avg_len_ros_all_prtcls, 2)
-        self.logger.add_value("num total samples", self._cnt_samples)
-
-        # Logging for recording (averaged over particles)
-        self.logger.add_value("avg rollout len", np.mean(avg_len_ros_all_prtcls), 4)
-        self.logger.add_value("avg return", np.mean(avg_rets_all_prtcls), 4)
-        self.logger.add_value("median return", np.median(median_rets_all_prtcls), 4)
-        self.logger.add_value("std return", np.mean(std_rets_all_prtcls), 4)
-
-        # Save snapshot data
-        self.make_snapshot(snapshot_mode, float(np.mean(avg_rets_all_prtcls)), meta_info)
+            self.particles[i].step(snapshot_mode="no")
 
         # Update the particles
-        self.update(ros_all_particles)
+        # self.update(ros_all_particles)
 
     def kernel(self, X: to.Tensor) -> Tuple[to.Tensor, to.Tensor]:
         """
