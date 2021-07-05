@@ -30,68 +30,55 @@
 Train agents to solve the Ball-on-Beam environment using Stein Variational Policy Gradient.
 """
 import torch as to
+from torch.optim import lr_scheduler
 
 import pyrado
 from pyrado.algorithms.step_based.svpg import SVPG
-from pyrado.environment_wrappers.action_normalization import ActNormWrapper
 from pyrado.environments.pysim.ball_on_beam import BallOnBeamSim
-from pyrado.logger.experiment import save_dicts_to_yaml, setup_experiment
-from pyrado.utils.argparser import get_argparser
+from pyrado.environments.pysim.one_mass_oscillator import OneMassOscillatorSim
+from pyrado.logger.experiment import setup_experiment
+from pyrado.policies.features import FeatureStack, identity_feat, sin_feat
 
 
 if __name__ == "__main__":
-    # Parse command line arguments
-    args = get_argparser().parse_args()
+    dt = 1e-2
+    env = BallOnBeamSim(dt, 500)
 
-    # Experiment (set seed before creating the modules)
     ex_dir = setup_experiment(BallOnBeamSim.name, SVPG.name)
 
-    # Set seed if desired
-    pyrado.set_seed(args.seed, verbose=True)
+    hparam = {
+        "particle_hparam": {
+            # "actor": {"hidden_sizes": [32, 24], "hidden_nonlin": to.relu},
+            "actor": dict(feats=FeatureStack(identity_feat, sin_feat)),
+            "vfcn": {"hidden_sizes": [32, 32], "hidden_nonlin": to.relu},
+            "critic": dict(
+                gamma=0.99,
+                lamda=0.95,
+                batch_size=100,
+                standardize_adv=True,
+                lr_scheduler=lr_scheduler.ExponentialLR,
+                lr_scheduler_hparam=dict(gamma=0.99),
+            ),
+            "algo": dict(
+                max_iter=500,
+                min_steps=env.max_steps * 10,
+                num_workers=4,
+                vfcn_coeff=0.7,
+                entropy_coeff=4e-5,
+                batch_size=256,
+                std_init=0.8,
+                lr=2e-3,
+                lr_scheduler=lr_scheduler.ExponentialLR,
+                lr_scheduler_hparam=dict(gamma=0.99),
+            ),
+        },
+        "max_iter": 500,
+        "num_particles": 4,
+        "temperature": 0.001,
+        "horizon": 20,
+        "min_steps": env.max_steps * 10,
+    }
 
-    # Environment
-    env_hparam = dict(dt=1 / 100.0, max_steps=500)
-    env = BallOnBeamSim(**env_hparam)
-    env = ActNormWrapper(env)
+    algo = SVPG(ex_dir, env, **hparam)
 
-    # Specification of actor an critic (will be instantiated in SVPG)
-    actor_hparam = dict(
-        hidden_sizes=[64],
-        hidden_nonlin=to.relu,
-    )
-    vfcn_hparam = dict(
-        hidden_sizes=[32],
-        hidden_nonlin=to.tanh,
-    )
-    critic_hparam = dict(
-        gamma=0.995,
-        lamda=0.95,
-        num_epoch=5,
-        lr=1e-3,
-        standardize_adv=False,
-        max_grad_norm=5.0,
-    )
-    particle_hparam = dict(actor=actor_hparam, vfcn=vfcn_hparam, critic=critic_hparam)
-
-    # Algorithm
-    algo_hparam = dict(
-        max_iter=200,
-        min_steps=30 * env.max_steps,
-        num_particles=3,
-        temperature=1,
-        lr=1e-3,
-        std_init=1.0,
-        horizon=50,
-        num_workers=12,
-    )
-    algo = SVPG(ex_dir, env, particle_hparam, **algo_hparam)
-
-    # Save the hyper-parameters
-    save_dicts_to_yaml(
-        dict(env=env_hparam, seed=args.seed),
-        dict(algo=algo_hparam, algo_name=algo.name),
-        save_dir=ex_dir,
-    )
-
-    # Jeeeha
-    algo.train(seed=args.seed)
+    algo.train()

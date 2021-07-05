@@ -20,7 +20,7 @@ if __name__ == "__main__":
         },
         "max_iter": 100,
         "num_particles": 4,
-        "temperature": 0.99,
+        "temperature": 0.01,
         "lr": 0.01,
         "horizon": 20,
         "min_steps": 10000,
