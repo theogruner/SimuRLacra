@@ -45,6 +45,7 @@ from pyrado.exploration.stochastic_action import NormalActNoiseExplStrat
 from pyrado.logger.step import StepLogger
 from pyrado.policies.base import Policy
 from pyrado.policies.feed_back.fnn import FNNPolicy
+from pyrado.policies.feed_back.linear import LinearPolicy
 from pyrado.sampling.parallel_rollout_sampler import ParallelRolloutSampler
 from pyrado.sampling.step_sequence import StepSequence
 from pyrado.utils.data_types import EnvSpec
@@ -68,7 +69,6 @@ class SVPG(Algorithm):
         max_iter: int,
         num_particles: int,
         temperature: float,
-        lr: float,
         horizon: int,
         std_init: float = 1.0,
         min_rollouts: int = None,
@@ -104,12 +104,10 @@ class SVPG(Algorithm):
 
         # Call Algorithm's constructor
         super().__init__(save_dir, max_iter, policy=None, logger=logger)
-
         # Store the inputs
         self._env = env
         self.num_particles = num_particles
         self.horizon = horizon
-        self.lr = lr
         self.temperature = temperature
         self.serial = serial
 
@@ -125,39 +123,68 @@ class SVPG(Algorithm):
         self.update_count = 0
 
         class OptimizerHook:
-            def __init__(self, optim):
-                self.optim = optim
+            def __init__(self, particle):
+                self.optim = particle.optim
                 self.buffer = Queue()
+                self.particle = particle
 
-            def real_step(self):
+            def real_step(self, *args, **kwargs):
+                self.optim.step(*args, **kwargs)
+
+            def iter_steps(self):
                 while not self.buffer.empty():
-                    args, kwargs = self.buffer.get()
-                    self.optim.step(*args, **kwargs)
+                    yield self.buffer.get()
+
+            def empty(self):
+                return self.buffer.empty()
+
+            def get_next_step(self):
+                return self.buffer.get()
 
             def step(self, *args, **kwargs):
-                self.buffer.put((args, kwargs))
-                print("OPTIM!")
+                self.buffer.put((args, kwargs, self.particle.policy.param_values, self.particle.policy.param_grads))
+                print(self.buffer.qsize())
 
             def zero_grad(self, *args, **kwargs):
                 self.optim.zero_grad(*args, **kwargs)
 
         for i in range(self.num_particles):
-            actor = FNNPolicy(spec=env.spec, **particle_hparam["actor"])
+            actor = LinearPolicy(spec=env.spec, **particle_hparam["actor"])
             vfcn = FNNPolicy(spec=EnvSpec(env.obs_space, ValueFunctionSpace), **particle_hparam["vfcn"])
             critic = GAE(vfcn, **particle_hparam["critic"])
             self.register_as_logger_parent(critic)
-            self.particles[i] = A2C(save_dir, env, actor, critic, max_iter, min_steps=min_steps)
-            self.fixed_particles[i] = A2C(save_dir, env, actor, critic, max_iter, min_steps=min_steps)
+            # self.register_as_logger_parent(actor)
+            self.particles[i] = A2C(save_dir, env, actor, critic, **particle_hparam["algo"])
+            self.register_as_logger_parent(self.particles[i])
+            self.fixed_particles[i] = A2C(save_dir, env, actor, critic, **particle_hparam["algo"])
             self.fixed_expl_strats[i] = self.expl_strats[i]
             self.particleSteps[i] = 0
-            self.particles[i].optim = OptimizerHook(self.particles[i].optim)
+            self.particles[i].optim = OptimizerHook(self.particles[i])
 
     def step(self, snapshot_mode: str, meta_info: dict = None):
+
         for i in range(self.num_particles):
             self.particles[i].step(snapshot_mode="no")
 
-        # Update the particles
-        # self.update(ros_all_particles)
+            while not self.particles[0].optim.empty():
+                parameters = []
+                policy_grads = []
+                args = []
+                kwargs = []
+                args_i, kwargs_i, params, grads = self.particles[i].optim.get_next_step()
+                policy_grads.append(grads)
+                parameters.append(params)
+                args.append(args_i)
+                kwargs.append(kwargs_i)
+
+        parameters = to.stack(parameters)
+        policy_grads = to.stack(policy_grads)
+        Kxx, dx_Kxx = self.kernel(parameters)
+        grad_theta = (to.mm(Kxx, policy_grads / self.temperature) + dx_Kxx) / self.num_particles
+
+        for i in range(self.num_particles):
+            self.particles[i].policy.param_grad = grad_theta[i]
+            self.particles[i].optim.real_step(args[i], kwargs[i])
 
     def kernel(self, X: to.Tensor) -> Tuple[to.Tensor, to.Tensor]:
         """
@@ -185,51 +212,6 @@ class SVPG(Algorithm):
         grads /= h ** 2
 
         return kernel, grads
-
-    def update(self, rollouts: Sequence[StepSequence]):
-        r"""
-        Train the particles $mu$.
-
-        :param rollouts: rewards collected from the rollout
-        """
-        policy_grads = []
-        parameters = []
-
-        for i in range(self.num_particles):
-            # Get the rollouts associated to the i-th particle
-            concat_ros = StepSequence.concat(rollouts[i])
-            concat_ros.torch(to.get_default_dtype())
-
-            act_stats = compute_action_statistics(concat_ros, self.expl_strats[i])
-            act_stats_fixed = compute_action_statistics(concat_ros, self.fixed_expl_strats[i])
-
-            klds = to.distributions.kl_divergence(act_stats.act_distr, act_stats_fixed.act_distr)
-            entropy = act_stats.act_distr.entropy()
-            log_prob = act_stats.log_probs
-
-            concat_ros.rewards = concat_ros.rewards - (0.1 * klds.mean(1)).view(-1) - 0.1 * entropy.mean(1).view(-1)
-
-            # Update the advantage estimator's parameters and return advantage estimates
-            adv = self.particles[i].critic.update(rollouts[i], use_empirical_returns=True)
-
-            # Estimate policy gradients
-            self.optimizers[i].zero_grad()
-            policy_grad = -to.mean(log_prob * adv.detach())
-            policy_grad.backward()  # step comes later than usual
-
-            # Collect flattened parameter and gradient vectors
-            policy_grads.append(self.expl_strats[i].param_grad)
-            parameters.append(self.expl_strats[i].param_values)
-
-        parameters = to.stack(parameters)
-        policy_grads = to.stack(policy_grads)
-        Kxx, dx_Kxx = self.kernel(parameters)
-        grad_theta = (to.mm(Kxx, policy_grads / self.temperature) + dx_Kxx) / self.num_particles
-
-        for i in range(self.num_particles):
-            self.expl_strats[i].param_grad = grad_theta[i]
-            self.optimizers[i].step()
-        self.update_count += 1
 
     def save_snapshot(self, meta_info: dict = None):
         super().save_snapshot(meta_info)
