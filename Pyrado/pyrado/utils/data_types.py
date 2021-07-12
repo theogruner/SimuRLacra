@@ -28,7 +28,7 @@
 
 import collections
 import typing
-from typing import NamedTuple, Sequence, TypeVar, Union
+from typing import List, NamedTuple, Sequence, TypeVar, Union
 
 import numpy as np
 import torch as to
@@ -332,3 +332,28 @@ def dict_path_access(
         result = result[part]
 
     return result
+
+
+def domain_param_dict_from_params(dom_params: to.Tensor, dp_mapping: dict) -> List[dict]:
+    """
+    maps the domain parameters of a `torch.Distribution` to their respective domain parameter names.
+    :param dom_params: A batch [B, d] of domain parameters of size d.
+                       It is assumed that the order of the domain params follows the order of `dp_mapping`.
+    :param dp_mapping: Dict which mapps an ordered list to the respective domain parameter names
+    :return: List of dicts mapping the domain parameter name to its value
+    """
+    dp_list = []
+    for dp in dom_params:
+        dp_list.append(dict([(dp_mapping[i], dp[i]) for i in sorted(dp_mapping.keys())]))
+    return dp_list
+
+
+def domain_param_list_from_dict(dp_dict: dict, dp_mapping: dict) -> List:
+    """
+    Map a dict of domain parameter keys and its values to a list which has the same ordering as `dp_mapping`.
+    :param dp_dict: A dict assigning a value to a domain-parameter name.
+    :param dp_mapping: A dict assinging a domain-paramter name to an integer. The integer specifies the order in which
+                       the domain parameter should be listed
+    :return: Ordered list of the `dp_dict` values based on the dp_mapping
+    """
+    return [dp_dict[dp_mapping[val]] for val in sorted(dp_mapping.keys())]
