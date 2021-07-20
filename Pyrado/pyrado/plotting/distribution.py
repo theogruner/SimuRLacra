@@ -954,7 +954,7 @@ def draw_posterior_pairwise_scatter(
     :param env_real: real-world environment a.k.a. target domain. Used in case of a sim-2-sim example to
                      get the ground truth domain parameters
     :param axis_limits: define the lower and upper limits of shape [2, num_domain_param] for each domain parameter.
-                        This is only used if no `pior` was specified. Passing `None` will generate limits automatically.
+                        This is only used if no `prior` was specified. Passing `None` will generate limits automatically.
     :param marginal_layout: choose between `inside` for plotting the marginals on the diagonal (more dense), and
                            `outside` plotting the marginals on the side (better comparison)
     :param labels: list of strings to set the axis labels, pass `None` to use the domain parameter mapping
