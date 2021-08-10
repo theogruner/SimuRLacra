@@ -358,6 +358,8 @@ class SamplerPool:
             return res
 
         # Put args into a parallel queue
+        self._manager.shutdown()
+        self._manager = mp.Manager()
         argqueue = self._manager.Queue(maxsize=len(arglist))
 
         # Fill the queue, must be done fist to avoid race conditions
@@ -384,7 +386,7 @@ class SamplerPool:
         # Collect results in one list
         allres = self._await_result()
         result = [item for res in allres for item in res]
-
+        self._manager.shutdown()
         # Sort results by index to ensure consistent order with args
         result.sort(key=lambda t: t[0])
         return [item for _, item in result]
