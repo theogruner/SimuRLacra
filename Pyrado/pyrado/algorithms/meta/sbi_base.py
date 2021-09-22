@@ -101,6 +101,7 @@ class SBIBase(InterruptableAlgorithm, ABC):
         len_segments: int = None,
         stop_on_done: bool = True,
         use_rec_act: bool = True,
+        reset_initial_states: bool = True,
         num_sbi_rounds: int = 1,
         reset_sbi_routine_each_iter: bool = False,
         reset_proposal_each_iter: bool = False,
@@ -216,6 +217,7 @@ class SBIBase(InterruptableAlgorithm, ABC):
         self.len_segments = len_segments
         self.stop_on_done = stop_on_done
         self.use_rec_act = use_rec_act
+        self.reset_initial_states = reset_initial_states
         self.reset_sbi_routine_each_iter = reset_sbi_routine_each_iter
         self.reset_proposal_each_iter = reset_proposal_each_iter
         self.num_sbi_rounds = num_sbi_rounds
@@ -297,6 +299,7 @@ class SBIBase(InterruptableAlgorithm, ABC):
             self.stop_on_done,
             rollouts_real,
             self.use_rec_act,
+            self.reset_initial_states,
         )
 
         # Call sbi's preparation function
