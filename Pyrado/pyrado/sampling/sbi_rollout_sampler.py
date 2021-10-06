@@ -189,7 +189,7 @@ class SimRolloutSamplerForSBI(RolloutSamplerForSBI, Serializable):
         if self.rollouts_real is not None:
             self._set_action_field(self.rollouts_real)
         self.reset_initial_states = reset_initial_states
-        if self.reset_initial_states:
+        if not self.reset_initial_states:
             assert self.num_segments == 1 or self.len_segments == self._env.max_steps
 
     def __call__(self, dp_values: to.Tensor) -> to.Tensor:
@@ -202,7 +202,7 @@ class SimRolloutSamplerForSBI(RolloutSamplerForSBI, Serializable):
         """
         dp_values = to.atleast_2d(dp_values).numpy()
 
-        if self.rollouts_real is not None or not self.reset_initial_states:
+        if self.rollouts_real is not None and self.reset_initial_states:
             if self.use_rec_act:
                 # Create a policy that simply replays the recorded actions
                 self._set_action_field(self.rollouts_real)
