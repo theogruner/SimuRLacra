@@ -137,6 +137,7 @@ class NPDR(SBIBase):
                     num_rollouts=self.num_real_rollouts,
                     num_segments=self.num_segments,
                     len_segments=self.len_segments,
+                    max_steps=self._env_sim_sbi.max_steps
                 )
 
                 # Save the target domain data

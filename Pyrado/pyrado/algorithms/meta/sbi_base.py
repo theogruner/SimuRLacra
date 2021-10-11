@@ -358,6 +358,7 @@ class SBIBase(InterruptableAlgorithm, ABC):
         num_rollouts: int,
         num_segments: int = None,
         len_segments: int = None,
+        max_steps: int = None,
         prefix: str = "",
     ) -> Tuple[to.Tensor, List[StepSequence]]:
         """
@@ -377,6 +378,8 @@ class SBIBase(InterruptableAlgorithm, ABC):
         :param len_segments: length of the segments in which the rollouts are split into. For every segment, the initial
                              state of the simulation is reset, and thus for every set the features of the trajectories
                              are computed separately. Either specify `num_segments` or `len_segments`.
+        :param max_steps: This argument is only used if pre-recorded arguments will be used.
+                          The rollouts are truncated to the desired length.
         :param prefix: to control the saving for the evaluation of an initial policy, `None` to deactivate
         :return: data from the real-world rollouts a.k.a. set of $x_o$ of shape [num_iter, num_rollouts_per_iter,
                  time_series_length, dim_data], and the real-world rollouts
@@ -387,7 +390,7 @@ class SBIBase(InterruptableAlgorithm, ABC):
         # Evaluate sequentially (necessary for sim-to-real experiments)
         if isinstance(env, str):
             rollout_worker = RecRolloutSamplerForSBI(
-                env, embedding, num_segments, len_segments, rand_init_rollout=False
+                env, embedding, num_segments, len_segments, rand_init_rollout=False, max_steps=max_steps
             )
         else:
             rollout_worker = RealRolloutSamplerForSBI(env, policy, embedding, num_segments, len_segments)

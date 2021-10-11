@@ -431,6 +431,7 @@ class RecRolloutSamplerForSBI(RealRolloutSamplerForSBI, Serializable):
         num_segments: int = None,
         len_segments: int = None,
         rand_init_rollout: bool = True,
+        max_steps: int = None,
     ):
         """
         Constructor
@@ -444,6 +445,8 @@ class RecRolloutSamplerForSBI(RealRolloutSamplerForSBI, Serializable):
                             state of the simulation is reset, and thus for every set the features of the trajectories
                             are computed separately. Either specify `num_segments` or `len_segments`.
         :param rand_init_rollout: if `True`, chose the first rollout at random, and then cycle through the list
+        :param max_steps: Rollout length considered for the inference procedure.
+                          If `None`, the rollouts won't be truncated.
         """
         if not os.path.isdir(rollouts_dir):
             raise pyrado.PathErr(given=rollouts_dir)
@@ -457,6 +460,9 @@ class RecRolloutSamplerForSBI(RealRolloutSamplerForSBI, Serializable):
         for root, dirs, files in os.walk(rollouts_dir):
             dirs.clear()  # prevents walk() from going into subdirectories
             rollouts_rec = [pyrado.load(name=f, load_dir=root) for f in files if f.startswith("rollout")]
+            if max_steps is not None:
+                # truncate the rollouts
+                rollouts_rec = [ro[:max_steps] for ro in rollouts_rec]
             check_all_lengths_equal(rollouts_rec)
         if not rollouts_rec:
             raise pyrado.ValueErr(msg="No rollouts have been found!")
@@ -465,6 +471,8 @@ class RecRolloutSamplerForSBI(RealRolloutSamplerForSBI, Serializable):
         self.rollouts_rec = rollouts_rec
         self._ring_idx = np.random.randint(0, len(rollouts_rec)) if rand_init_rollout else 0
         self._set_action_field(self.rollouts_rec)
+
+        self.max_steps = max_steps
 
     @property
     def ring_idx(self) -> int:
@@ -505,7 +513,12 @@ class RecRolloutSamplerForSBI(RealRolloutSamplerForSBI, Serializable):
         ro.torch()
 
         # Assemble the data
-        data_real = to.cat([ro.states[:-1, :], ro.get_data_values(self._action_field)], dim=1)
+        if self.max_steps is not None:
+            data_real = to.cat(
+                [ro.states, ro.get_data_values(self._action_field)], dim=1
+            )
+        else:
+            data_real = to.cat([ro.states[:-1, :], ro.get_data_values(self._action_field)], dim=1)
         if self._embedding.requires_target_domain_data:
             data_real = to.cat([data_real, data_real], dim=1)
 
