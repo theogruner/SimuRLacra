@@ -343,3 +343,60 @@ class EnvWrapperObs(EnvWrapper):
 
         # Return processed observation
         return self._process_obs(obs), rew, done, info
+
+
+class EnvWrapperState(EnvWrapper):
+    """
+    Base class for environment wrappers modifying the states.
+    Override _process_states to pass a modified observation vector to the wrapped environment.
+    If necessary, you should also override _process_state_space to report the correct one.
+    """
+
+    @abstractmethod
+    def _process_state(self, state: np.ndarray):
+        """
+        Return the modified states vector to be returned from this environment.
+
+        :param state: states from the inner environment
+        :return: changed states vector
+        """
+        raise NotImplementedError
+
+    def _process_state_space(self, space: Space) -> Space:
+        """
+        Return the modified observation space.
+        Override if the operation defined in _process_obs affects shape or bounds of the observation vector.
+        :param space: inner env observation space
+        :return: action space to report for this env
+        """
+        return space
+
+    @property
+    def state_space(self) -> Space:
+        # Process space
+        # By not using _wrapped_env directly, we can mix this class with EnvWrapperAct
+        return self._process_state_space(super().state_space)
+
+    @EnvWrapper.state.setter
+    def state(self, state: np.ndarray):
+        """
+        Set the state of the wrapped environment.
+        This method overrides the state setter method of the Base EnvWrapper.
+        """
+        if not isinstance(state, np.ndarray):
+            raise pyrado.TypeErr(given=state, expected_type=np.ndarray)
+        if not state.shape == self._wrapped_env.state.shape:
+            raise pyrado.ShapeErr(given=state, expected_match=self._wrapped_env.state)
+
+        self._wrapped_env.state = self._process_state(state)
+
+    def step(self, act: np.ndarray) -> tuple:
+        # Either perturb before or after.
+        #  Currently I would argue after.
+        # self.state = self._process_state(self.state)
+        # return self.wrapped_env.step(act)
+
+        _, rew, done, inf = self.wrapped_env.step(act)
+        self.state = self._process_state(self.state)
+        obs = self.wrapped_env.observe(self.state)
+        return obs, rew, done, inf
