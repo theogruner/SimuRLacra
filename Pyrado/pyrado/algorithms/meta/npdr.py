@@ -27,6 +27,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 import os.path as osp
+import time
 from typing import Optional, Type
 
 import torch as to
@@ -165,10 +166,11 @@ class NPDR(SBIBase):
 
             # Load the latest proposal, this can be the prior or the amortized posterior of the last iteration
             proposal = self.get_latest_proposal_prev_iter()
-
+            simulation_time, training_time, combined_time = [0], [0], [0]
             # Multi-round sbi
             for idx_r in range(self.num_sbi_rounds):
                 # Sample parameters proposal, and simulate these parameters to obtain the data
+                sim_time = time.time()
                 domain_param, data_sim = simulate_for_sbi(
                     simulator=self._sbi_simulator,
                     proposal=proposal,
@@ -176,6 +178,7 @@ class NPDR(SBIBase):
                     simulation_batch_size=self.simulation_batch_size,
                     num_workers=self.num_workers,
                 )
+                simulation_time.append(time.time() - sim_time + simulation_time[-1])
                 self._cnt_samples += self.num_sim_per_round * self._env_sim_sbi.max_steps
 
                 # Append simulations and proposals for sbi
@@ -186,11 +189,13 @@ class NPDR(SBIBase):
                 )
 
                 # Train the posterior
+                train_time = time.time()
                 density_estimator = self._subrtn_sbi.train(**self.subrtn_sbi_training_hparam)
                 posterior = self._subrtn_sbi.build_posterior(
                     density_estimator=density_estimator, **self.subrtn_sbi_sampling_hparam
                 )
-
+                training_time.append(time.time() - train_time + training_time[-1])
+                combined_time.append(simulation_time[-1] + training_time[-1])
                 # Save the posterior of this iteration before tailoring it to the data (when it is still amortized)
                 if idx_r == 0:
                     pyrado.save(
@@ -214,6 +219,10 @@ class NPDR(SBIBase):
 
                 # Override the latest posterior
                 pyrado.save(posterior, "posterior.pt", self._save_dir)
+            for i in range(len(simulation_time)):
+                self.logger.add_value(f"simulation time round {i}", round(simulation_time[i]))
+                self.logger.add_value(f"training time round {i}", round(training_time[i]))
+                self.logger.add_value(f"combined time round {i}", round(combined_time[i]))
 
             self.reached_checkpoint()  # setting counter to 2
 
