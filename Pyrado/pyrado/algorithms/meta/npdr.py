@@ -217,6 +217,9 @@ class NPDR(SBIBase):
                     prefix=f"iter_{self._curr_iter}_round_{idx_r}",
                 )
 
+                print(round(simulation_time[-1]))
+                print(round(training_time[-1]))
+                print(round(combined_time[-1]))
                 # Override the latest posterior
                 pyrado.save(posterior, "posterior.pt", self._save_dir)
             for i in range(len(simulation_time)):
